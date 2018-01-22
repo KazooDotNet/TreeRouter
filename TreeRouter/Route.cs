@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Microsoft.CSharp.RuntimeBinder;
 
 namespace TreeRouter
@@ -16,7 +17,7 @@ namespace TreeRouter
 		public int LiteralTokenCount { get; }
 		public Dictionary<string, Regex> Constraints { get; set; }
 		public Dictionary<string, string> Defaults { get; set; }
-		public Action<Request> ActionHandler { get; set; }
+		public Func<Request, Task> ActionHandler { get; set; }
 		public Type ClassHandler { get; set; }
 		public string[] Methods { get; }
 		

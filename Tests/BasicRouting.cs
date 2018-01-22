@@ -11,7 +11,7 @@ namespace Tests
 		
 		public BasicRouting()
 		{
-			_router = new Router();
+			_router = new Router(null);
 		}
 		
 		[Fact]
@@ -25,11 +25,21 @@ namespace Tests
 		}
 
 		[Fact]
+		public void FindsRootRoute()
+		{
+			_router.Map( r => r.Get("/", new RouteOpts()) );
+			var result = _router.MatchPath("/", "get");
+			Assert.True(result.Found);
+			Assert.NotNull(result.Route);
+		}
+
+		[Fact]
 		public void ExtractsVars()
 		{
 			_router.Map(r => r.Delete("/stuff/{things}", new RouteOpts()) );
 			var result = _router.MatchPath("/stuff/3", "delete");
 			Assert.Equal("3", result.Vars["things"]);
+			Assert.NotNull(result.Route);
 		}
 
 		[Fact]
@@ -44,6 +54,7 @@ namespace Tests
 			result = _router.MatchPath("/stuff/3", "put");
 			Assert.True(result.Found);
 			Assert.Equal("3", result.Vars["things"]);
+			Assert.NotNull(result.Route);
 		}
 
 		[Fact]
@@ -61,6 +72,7 @@ namespace Tests
 			result = _router.MatchPath("/stuff/50", "patch");
 			Assert.True(result.Found);
 			Assert.Equal("50", result.Vars["things"]);
+			Assert.NotNull(result.Route);
 		}
 
 		[Fact]
@@ -75,6 +87,7 @@ namespace Tests
 			result = _router.MatchPath("/stuff/and/things", "post");
 			Assert.True(result.Found);
 			Assert.Equal("and/things", result.Vars["splat"]);
+			Assert.NotNull(result.Route);
 		}
 		
 	}

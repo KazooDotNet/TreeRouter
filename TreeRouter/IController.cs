@@ -1,7 +1,9 @@
-﻿namespace TreeRouter
+﻿using System.Threading.Tasks;
+
+namespace TreeRouter
 {
 	public interface IController
 	{
-		void Route(Request routerRequest);
+		Task Route(Request routerRequest);
 	}
 }

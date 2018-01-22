@@ -1,8 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.ComponentModel.Design;
 using System.Linq;
-using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace TreeRouter
 {
@@ -11,9 +15,11 @@ namespace TreeRouter
 		
 		private List<Route> Routes { get; }
 		private PathBranch Root { get; set; }
+		private IServiceContainer _container;
 		
-		public Router()
+		public Router(IServiceContainer container)
 		{
+			_container = container ?? new ServiceContainer();
 			Routes = new List<Route>();
 		}
 
@@ -93,6 +99,41 @@ namespace TreeRouter
 			}
 			return result ?? new RouteResult { Found = false };
 		}
+		
+		public async Task Dispatch(HttpContext context)
+		{
+			var req = context.Request;
+			string path = req.PathBase == null ? 
+				req.Path.ToString() : req.PathBase.ToString().TrimEnd('/') + '/' + req.Path.ToString().TrimStart('/');
+			var result = MatchPath(path, req.Method.ToLower());
+			if (!result.Found)
+				throw new Errors.RouteNotFound("No route was found that matches the requested path")
+				{
+					Path = path,
+					Method = req.Method
+				};
+			var request = new Request { Context = context, RouteVars = result.Vars };
+			
+			if (result.Route.ActionHandler != null)
+			{
+				await result.Route.ActionHandler.Invoke(request);
+				return;
+			}
+
+			if (result.Route.ClassHandler != null)
+			{
+				var controller = (IController)_container.GetService(result.Route.ClassHandler);
+				if (controller == null)
+					throw new Errors.UnregisteredController("Service container does not have controller registered")
+						{ ControllerType = result.Route.ClassHandler };
+				await controller.Route(request);
+				return;
+			}
+			
+			// TODO: move this to the compile step
+			throw new Exception("No handlers are defined");
+			
+		}
 
 		private List<RouteResult> BranchSearch(PathBranch branch, string method, List<string> pathTokens)
 		{
@@ -121,23 +162,21 @@ namespace TreeRouter
 				else if (child.Token.Matcher is Regex regex)
 				{
 					var match = regex.Match(token);
-					if (match.Success)
+					if (!match.Success) continue;
+					if (child.Route != null && child.Route.Methods.Contains(method))
 					{
-						if (child.Route != null && child.Route.Methods.Contains(method))
+						var matchName = regex.GetGroupNames()[1];
+						if (child.Token.Greedy)
 						{
-							var matchName = regex.GetGroupNames()[1];
-							if (child.Token.Greedy)
-							{
-								pathTokens.Insert(0, token);
-								matchedTokens[matchName] = String.Join('/', pathTokens);
-							}
-							else
-								matchedTokens[matchName] = token;
-							matchedResults.Add(new RouteResult { Route = branch.Route, Vars = matchedTokens });
+							pathTokens.Insert(0, token);
+							matchedTokens[matchName] = String.Join('/', pathTokens);
 						}
-						if (!child.Token.Greedy)	
-							BranchSearch(child, method, pathTokens, matchedTokens, matchedResults);
+						else
+							matchedTokens[matchName] = token;
+						matchedResults.Add(new RouteResult { Route = child.Route, Vars = matchedTokens });
 					}
+					if (!child.Token.Greedy)	
+						BranchSearch(child, method, pathTokens, matchedTokens, matchedResults);
 				}	
 			}
 			return matchedResults;

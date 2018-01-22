@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace TreeRouter
 {
@@ -11,6 +12,6 @@ namespace TreeRouter
 		public string Path { get; set; }
 		public Dictionary<string, Regex> Constraints { get; set; }
 		public Dictionary<string, string> Defaults { get; set; }
-		public Action<Request> Action { get; set; }
+		public Func<Request, Task> Action { get; set; }
 	}
 }
