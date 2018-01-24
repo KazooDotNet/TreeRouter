@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
-using System.Text.RegularExpressions;
-using Microsoft.CSharp.RuntimeBinder;
+using System.Linq;
 
 namespace TreeRouter
 {
@@ -8,38 +7,46 @@ namespace TreeRouter
 	{
 		public Route Route { get; set; }
 		public RouteToken Token { get; set; }
-		private Dictionary<string, PathBranch> ChildrenDict { get; }
+		public string Method { get; set; }
+		protected bool Added { get; set; }
+		private Dictionary<string, List<PathBranch>> ChildrenDict { get; }
 		private readonly List<PathBranch> _childrenList;
 		private PathBranch[] _children;
 		public PathBranch[] Children => _children ?? Build();
-
+		
 		public PathBranch()
 		{
 			_childrenList = new List<PathBranch>();
-			ChildrenDict = new Dictionary<string, PathBranch>();
+			ChildrenDict = new Dictionary<string, List<PathBranch>>();
 		}
 
 		public void AddChild(PathBranch pathBranch)
 		{
-			var key = GetKey(pathBranch.Token.Matcher);
+			if (pathBranch.Added) 
+				return;
+			pathBranch.Added = true;
 			_childrenList.Add(pathBranch);
-			ChildrenDict[key] = pathBranch;
+			var key = GetKey(pathBranch.Token);
+			if (!ChildrenDict.ContainsKey(key)) 
+				ChildrenDict[key] = new List<PathBranch>();
+			ChildrenDict[key].Add(pathBranch);
 		}
 
-		public PathBranch FindChild(dynamic matcher)
+		public PathBranch[] FindChildren(RouteToken token, string[] methods)
 		{
-			var key = GetKey(matcher);
-			return ChildrenDict.ContainsKey(key) ? ChildrenDict[key] : null;
+			var key = GetKey(token);
+			ChildrenDict.TryGetValue(key, out var children);
+			var ret = new List<PathBranch>();
+			if (children != null)
+				ret.AddRange(children.Where( c => c.Method == null || methods.Contains(c.Method) ).ToList());
+			return ret.ToArray();
 		}
+
+		private string GetKey(RouteToken token) =>
+			token.Text ?? $"******{token.Name}******";
+		
 
 		public PathBranch[] Build() => _children = _childrenList.ToArray();
-
-		private string GetKey(dynamic matcher)
-		{
-			if (matcher is Regex regex)
-				return "****REGEX****" + regex;
-			return matcher as string;
-		}
 
 	}
 }

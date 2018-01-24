@@ -39,7 +39,8 @@ namespace TreeRouter
 				{
 					if (optional)
 						PathError("Cannot have required segments after optional ones", path);
-					token.Matcher = new Regex($"^(?<{match.Groups[1].Value}>[^/]+)");
+					token.Name = match.Groups[1].Value;
+					token.MatchAny = true;
 					Tokens.Add(token);
 					continue;
 				}
@@ -48,7 +49,8 @@ namespace TreeRouter
 				if (match.Success)
 				{
 					optional = true;
-					token.Matcher = new Regex($"^(?<{match.Groups[1].Value}>[^/]+)");
+					token.Name = match.Groups[1].Value;
+					token.MatchAny = true;
 					token.Optional = true;
 					Tokens.Add(token);
 					continue;
@@ -60,7 +62,8 @@ namespace TreeRouter
 					if (i < parts.Length)
 						PathError("Greedy expressions can only go at the end.", path);
 					optional = true;
-					token.Matcher = new Regex($"^(?<{match.Groups[1].Value}>.*)");
+					token.Name = match.Groups[1].Value;
+					token.MatchAny = true;
 					token.Greedy = true;
 					Tokens.Add(token);
 					continue;
@@ -69,7 +72,7 @@ namespace TreeRouter
 				if (optional)
 					PathError("Cannot have required segments after optional ones", path);
 				LiteralTokenCount++;
-				token.Matcher = part;
+				token.Text = part;
 				Tokens.Add(token);
 			}
 			

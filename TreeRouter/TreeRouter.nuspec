@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>TreeRouter</id>
+    <version>0.0.1</version>
+    <title>Tree Router</title>
+    <authors>Jeremy Nicoll</authors>
+    <owners>Accentuate.Me LLC</owners>
+    <projectUrl>https://github.com/AccentuateMe/TreeRouter</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>A router which maps out path nodes to reduce the number of routes to match, increasing speed.</description>
+    <copyright>Copyright 2018 Accentaute.Me LLC</copyright>
+    <tags>router</tags>
+  </metadata>
+</package>

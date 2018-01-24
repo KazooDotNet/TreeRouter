@@ -13,5 +13,7 @@ namespace TreeRouter
 		public Dictionary<string, Regex> Constraints { get; set; }
 		public Dictionary<string, string> Defaults { get; set; }
 		public Func<Request, Task> Action { get; set; }
+		public Type ClassHandler { get; set; }
+		public string Prefix { get; set; }
 	}
 }

@@ -89,6 +89,16 @@ namespace Tests
 			Assert.Equal("and/things", result.Vars["splat"]);
 			Assert.NotNull(result.Route);
 		}
+
+		[Fact]
+		public void MapsWithPrefix()
+		{
+			_router.Map("/prefix", r => r.Get("/things/{ things ? }", new RouteOpts()));
+			var result = _router.MatchPath("/prefix/things/3", "get");
+			Assert.True(result.Found);
+			Assert.NotNull(result.Route);
+			Assert.Equal("3", result.Vars["things"]);
+		}
 		
 	}
 }
