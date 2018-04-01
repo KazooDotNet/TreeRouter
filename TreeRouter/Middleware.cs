@@ -16,16 +16,16 @@ namespace TreeRouter
 			_next = next;
 		}
 
-		public async Task Invoke(HttpContext context)
+		public Task Invoke(HttpContext context)
 		{
 			try
 			{
-				await _router.Dispatch(context);
+				return _router.Dispatch(context);
 			}
 			catch (Errors.RouteNotFound e)
 			{
 				Console.WriteLine(e);
-				_next?.Invoke(context);
+				return _next?.Invoke(context) ?? Task.FromException(e);
 			}
 		}
 	}

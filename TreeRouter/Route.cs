@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Microsoft.CSharp.RuntimeBinder;
 
 namespace TreeRouter
 {
@@ -13,79 +13,115 @@ namespace TreeRouter
 		private static Regex optionalVar = new Regex(@"\s*{\s*(\w+)\s*\?\s*}\s*");
 		private static Regex greedyVar = new Regex(@"\s*{\s*(\w+)\s*\*\s*}\s*");
 		
-		public List<RouteToken> Tokens { get; }
-		public int LiteralTokenCount { get; }
-		public Dictionary<string, Regex> Constraints { get; set; }
-		public Dictionary<string, string> Defaults { get; set; }
+		public List<RouteToken> Tokens { get; private set; }
+		public int LiteralTokenCount { get; private set; }
+		public Constraints Constraints { get; set; }
+		public Defaults Defaults { get; set; }
 		public Func<Request, Task> ActionHandler { get; set; }
 		public Type ClassHandler { get; set; }
-		public string[] Methods { get; }
-		
-		public Route(string path, string[] methods)
-		{
-			LiteralTokenCount = 0;
-			Tokens = new List<RouteToken>();
-			Methods = methods;
-			var parts = path.Trim('/').Split('/');
-			var i = 0;
-			var optional = false;
-			foreach (var part in parts)
+		public string[] Methods { get; set; }
+
+		public static Route FromOptions(RouteOptions options) =>
+			new Route
 			{
-				i++;
-				var token = new RouteToken();
-				
-				var match = plainVar.Match(part);
-				if (match.Success)
+				Path = options.Path,
+				Constraints = options.Constraints,
+				Defaults = options.Defaults,
+				ActionHandler = options.ActionHandler,
+				ClassHandler = options.ClassHandler,
+				Methods = options.Methods
+			};
+		
+
+		private string _path;
+		public string Path
+		{
+			get => _path;
+			set
+			{
+				_path = value;
+				LiteralTokenCount = 0;
+				Tokens = new List<RouteToken>();
+				var parts = value.Trim('/').Split('/');
+				var i = 0;
+				var optional = false;
+				foreach (var part in parts)
 				{
+					i++;
+					var token = new RouteToken();
+				
+					var match = plainVar.Match(part);
+					if (match.Success)
+					{
+						if (optional)
+							PathError("Cannot have required segments after optional ones", value);
+						token.Name = match.Groups[1].Value;
+						token.MatchAny = true;
+						Tokens.Add(token);
+						continue;
+					}
+
+					match = optionalVar.Match(part);
+					if (match.Success)
+					{
+						optional = true;
+						token.Name = match.Groups[1].Value;
+						token.MatchAny = true;
+						token.Optional = true;
+						Tokens.Add(token);
+						continue;
+					}
+
+					match = greedyVar.Match(part);
+					if (match.Success)
+					{
+						if (i < parts.Length)
+							PathError("Greedy expressions can only go at the end.", value);
+						optional = true;
+						token.Name = match.Groups[1].Value;
+						token.MatchAny = true;
+						token.Greedy = true;
+						Tokens.Add(token);
+						continue;
+					}
+				
 					if (optional)
-						PathError("Cannot have required segments after optional ones", path);
-					token.Name = match.Groups[1].Value;
-					token.MatchAny = true;
+						PathError("Cannot have required segments after optional ones", value);
+					LiteralTokenCount++;
+					token.Text = part;
 					Tokens.Add(token);
-					continue;
 				}
-
-				match = optionalVar.Match(part);
-				if (match.Success)
-				{
-					optional = true;
-					token.Name = match.Groups[1].Value;
-					token.MatchAny = true;
-					token.Optional = true;
-					Tokens.Add(token);
-					continue;
-				}
-
-				match = greedyVar.Match(part);
-				if (match.Success)
-				{
-					if (i < parts.Length)
-						PathError("Greedy expressions can only go at the end.", path);
-					optional = true;
-					token.Name = match.Groups[1].Value;
-					token.MatchAny = true;
-					token.Greedy = true;
-					Tokens.Add(token);
-					continue;
-				}
-				
-				if (optional)
-					PathError("Cannot have required segments after optional ones", path);
-				LiteralTokenCount++;
-				token.Text = part;
-				Tokens.Add(token);
 			}
-			
 		}
+		
 
 		private void PathError(string msg, string path) =>
 			throw new ArgumentException(msg + "Route: " + path);
+
+		public RequestDictionary ExtractVars(string path)
+		{
+			var parts = path.Trim('/').Split('/');
+			var rd = new RequestDictionary();
+			var index = 0;
+			while (index < parts.Length)
+			{
+				var part = parts[index];
+				var token = Tokens[index];
+				if (token.MatchAny || token.Matcher != null)
+				{
+					rd[token.Name] = token.Greedy ? string.Join('/', parts.Skip(index)) : part;
+					if (token.Greedy) return rd;
+				}
+				index++;
+			}
+			return rd;
+		}
 		
 	}
 
 	public class Route<TController> : Route 
 	{
-		public Route(string path, string[] methods) : base(path, methods)
+		public Route()
 		{
 			ClassHandler = typeof(TController);
 		}

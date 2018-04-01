@@ -1,52 +1,56 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace TreeRouter
 {
 	public class PathBranch
 	{
-		public Route Route { get; set; }
+		public List<Route> Routes { get; }
 		public RouteToken Token { get; set; }
-		public string Method { get; set; }
-		protected bool Added { get; set; }
-		private Dictionary<string, List<PathBranch>> ChildrenDict { get; }
-		private readonly List<PathBranch> _childrenList;
+		private Dictionary<string, PathBranch> ChildrenDict { get; }
 		private PathBranch[] _children;
-		public PathBranch[] Children => _children ?? Build();
+		public IEnumerable<PathBranch> Children => _children ?? Build();
 		
 		public PathBranch()
 		{
-			_childrenList = new List<PathBranch>();
-			ChildrenDict = new Dictionary<string, List<PathBranch>>();
+			ChildrenDict = new Dictionary<string, PathBranch>();
+			Routes = new List<Route>();
 		}
 
 		public void AddChild(PathBranch pathBranch)
 		{
-			if (pathBranch.Added) 
-				return;
-			pathBranch.Added = true;
-			_childrenList.Add(pathBranch);
 			var key = GetKey(pathBranch.Token);
-			if (!ChildrenDict.ContainsKey(key)) 
-				ChildrenDict[key] = new List<PathBranch>();
-			ChildrenDict[key].Add(pathBranch);
+			if (ChildrenDict.ContainsKey(key)) return;
+			ChildrenDict[key] = pathBranch;
 		}
 
-		public PathBranch[] FindChildren(RouteToken token, string[] methods)
+		public PathBranch FindOrAddChildByToken(RouteToken token)
 		{
 			var key = GetKey(token);
-			ChildrenDict.TryGetValue(key, out var children);
-			var ret = new List<PathBranch>();
-			if (children != null)
-				ret.AddRange(children.Where( c => c.Method == null || methods.Contains(c.Method) ).ToList());
-			return ret.ToArray();
+			var pathBranch = FindChild(key);
+			if (pathBranch != null)
+				return pathBranch;
+			pathBranch = new PathBranch { Token = token };
+			ChildrenDict[key] = pathBranch;
+			return pathBranch;
 		}
 
-		private string GetKey(RouteToken token) =>
-			token.Text ?? $"******{token.Name}******";
+		public PathBranch FindChild(RouteToken token) => 
+			FindChild(GetKey(token));
 		
 
-		public PathBranch[] Build() => _children = _childrenList.ToArray();
+		public PathBranch FindChild(string key)
+		{
+			ChildrenDict.TryGetValue(key, out var child);
+			return child;
+		}
+
+		private static string GetKey(RouteToken token) =>
+			token.Text ?? Utils.ComputeHash(token.Hasher);
+		
+
+		public PathBranch[] Build() => _children = ChildrenDict.Select( pair => pair.Value ).ToArray();
 
 	}
 }

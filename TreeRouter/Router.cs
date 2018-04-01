@@ -18,75 +18,50 @@ namespace TreeRouter
 	
 	public class Router : IRouter
 	{
-		
-		private List<Route> Routes { get; }
+		private RouteBuilder RouteBuilder { get; set; }
 		private PathBranch Root { get; set; }
 		private readonly IServiceProvider _container;
 		
 		public Router(IServiceProvider container)
 		{
 			_container = container ?? new ServiceContainer();
-			Routes = new List<Route>();
 		}
 
 		public void Compile()
 		{
 			var root = new PathBranch();
-			foreach (var route in Routes)
-				BranchSorter(route, root);
+			foreach (var rb in RouteBuilder.AllChildren)
+			{
+				var options = rb.Options;
+				options.Defaults.TryGetValue("action", out var action);
+				if (options.ClassHandler == null && options.ActionHandler == null || options.Methods == null)
+					continue;
+				BranchSorter(Route.FromOptions(options), root);
+			}
 			BuildBranches(root);
 			Root = root;
 		}
 
-		public void BranchSorter(Route route, PathBranch branch, int i = 0)
+		public void BranchSorter(Route route, PathBranch root)
 		{
-			if (i >= route.Tokens.Count) 
-				return;
-			var token = route.Tokens[i];
-			IEnumerable<PathBranch> children = null;	
-			var next = i + 1;
-			if (next < route.Tokens.Count - 1 && (route.Tokens[next].Greedy || route.Tokens[next].Optional))
-				children = AssignRouteToChildren(route, token, branch);
-			else if (i == route.Tokens.Count - 1) // End of the line, stop looping
-				AssignRouteToChildren(route, token, branch);
-			else // Not in assignment mode, just branch building
+			var i = 0;
+			var branch = root;
+			while (true)
 			{
-				children =  branch.FindChildren(token, route.Methods);
-				if (!children.Any())
+				branch = branch.FindOrAddChildByToken(route.Tokens[i]);
+				if (i == route.Tokens.Count - 1)
 				{
-					var newChild = new PathBranch { Token = token };
-					branch.AddChild(newChild); 
-					children = new[] { newChild };
+					branch.Routes.Add(route);
+					return;
 				}
+				var next = i + 1;
+				if ( next < route.Tokens.Count && ( route.Tokens[next].Optional || route.Tokens[next].Greedy ) )
+					branch.Routes.Add(route);
+				i = i + 1;
 			}
-			if (children != null)
-				foreach (var child in children)
-					BranchSorter(route, child, i + 1);
 		}
 
-		private List<PathBranch> AssignRouteToChildren(Route route, RouteToken token, PathBranch parent)
-		{
-			var children = parent.FindChildren(token, route.Methods);
-			var matchedChildren = new List<PathBranch>();
-			foreach (var method in route.Methods)
-			{
-				var found = false;
-				foreach (var child in children)
-					if (child.Route == null && (child.Method == null || child.Method == method))
-					{
-						found = true;
-						child.Route = route;
-						child.Method = method;
-					}
-				if (found) continue;
-				var newChild = new PathBranch {Route = route, Method = method, Token = token};
-				matchedChildren.Add(newChild);
-				parent.AddChild(newChild);
-			}
-			return matchedChildren;
-		}
-
-		private void BuildBranches(PathBranch branch)
+		private static void BuildBranches(PathBranch branch)
 		{
 			branch.Build();
 			foreach (var child in branch.Children)
@@ -95,9 +70,8 @@ namespace TreeRouter
 
 		public void Map(string prefix, Action<RouteBuilder> action)
 		{
-			var builder = new RouteBuilder(prefix);
-			action.Invoke(builder);
-			Routes.AddRange(builder.Routes);
+			RouteBuilder = new RouteBuilder(prefix);
+			action.Invoke(RouteBuilder);
 			Compile();
 		}
 
@@ -110,111 +84,116 @@ namespace TreeRouter
 			RouteResult result = null;
 			switch (matchedResults.Count)
 			{
-					case 0:
-						return new RouteResult { Found = false };
-					case 1:
-						result = matchedResults[0];
-						break;
-					default:
-						foreach (var matchedResult in matchedResults)
-						{
-							if (result == null) { result = matchedResult; continue; }
-							var ctc = result.Route.LiteralTokenCount;
-							var ntc = matchedResult.Route.LiteralTokenCount;
-							if (ctc < ntc || (ctc == ntc && result.Vars.Count < matchedResult.Vars.Count))
-								result = matchedResult;
-						}
-						break;
+				case 0:
+					return new RouteResult { Found = false };
+				case 1:
+					result = matchedResults[0];
+					break;
+				default:
+					foreach (var matchedResult in matchedResults)
+					{
+						if (result == null) { result = matchedResult; continue; }	
+						var ctc = result.Route.LiteralTokenCount;
+						var ntc = matchedResult.Route.LiteralTokenCount;
+						if (ctc <= ntc || (ctc == ntc && result.Vars.Count < matchedResult.Vars.Count))
+							result = matchedResult;
+					}
+					break;
 			}
 
-			if (result != null)
-			{
-				result.Found = true;
-				var vars = new Dictionary<string, string>(result.Route?.Defaults ?? new Dictionary<string, string>()) ;
-				foreach (var pair in result.Vars)
-					vars[pair.Key] = pair.Value;
-				result.Vars = vars;
-			}
-			return result ?? new RouteResult { Found = false };
+			if (result == null) 
+				return new RouteResult { Found = false };
+			
+			result.Found = true;
+			var vars = new RequestDictionary(result.Route?.Defaults ?? new Defaults());
+			// TODO: fix the branch searcher so that it doesn't glom on extra vars
+			foreach (var pair in result.Route.ExtractVars(path))
+				vars[pair.Key] = pair.Value;
+			result.Vars = vars;
+			return result;
 		}
 		
-		public async Task Dispatch(HttpContext context)
+		public Task Dispatch(HttpContext context)
 		{
 			var req = context.Request;
-			string path = req.PathBase == null ? 
+			var path = req.PathBase == null ? 
 				req.Path.ToString() : req.PathBase.ToString().TrimEnd('/') + '/' + req.Path.ToString().TrimStart('/');
-			var result = MatchPath(path, req.Method.ToLower());
+			var method = req.Method.ToLower();
+			var contentType = context.Request.ContentType ?? "";
+			if (method == "post" && contentType.Contains("form") && context.Request.Form.ContainsKey("_method"))
+				method = context.Request.Form["_method"];
+				
+			var result = MatchPath(path, method);
 			if (!result.Found)
-				throw new Errors.RouteNotFound("No route was found that matches the requested path")
+				return Task.FromException(new Errors.RouteNotFound("No route was found that matches the requested path")
 				{
 					Path = path,
 					Method = req.Method
-				};
+				});
 			var request = new Request { Context = context, RouteVars = result.Vars };
 			
 			if (result.Route.ActionHandler != null)
-			{
-				await result.Route.ActionHandler.Invoke(request);
-				return;
-			}
+				return result.Route.ActionHandler.Invoke(request);
 
-			if (result.Route.ClassHandler != null)
-			{
-				var controller = (IController)_container.GetService(result.Route.ClassHandler);
-				if (controller == null)
-					throw new Errors.UnregisteredController("Service container does not have controller registered")
-						{ ControllerType = result.Route.ClassHandler };
-				await controller.Route(request);
-				return;
-			}
+
+			if (result.Route.ClassHandler == null)
+				return Task.FromException(new Errors.RouteNotFound("No handler on route. This is a bug, please report it")
+				{
+					Path = path,
+					Method = req.Method
+				});
+
+			if (!(_container.GetService(result.Route.ClassHandler) is IController controller))
+				return Task.FromException(new Errors.UnregisteredController("Service container does not have controller registered")
+					{ControllerType = result.Route.ClassHandler});
+				
 			
-			// TODO: move this to the compile step?
-			throw new Exception("No handlers are defined");
-			
+			return controller.Route(request);
+
 		}
 
-		private List<RouteResult> BranchSearch(PathBranch branch, string method, string[] pathTokens)
+		private static List<RouteResult> BranchSearch(PathBranch branch, string method, IReadOnlyList<string> pathTokens)
 		{
 			var list = new List<RouteResult>();
-			var matchedTokens = new Dictionary<string, string>();
+			var matchedTokens = new RequestDictionary();
 			return BranchSearch(branch, method, pathTokens, 0, matchedTokens, list);
 		}
-
-		private List<RouteResult> BranchSearch(PathBranch branch, string method, string[] pathTokens, 
-			int tokenIndex, Dictionary<string, string> matchedTokens, List<RouteResult> matchedResults)
+		
+		private static List<RouteResult> BranchSearch(PathBranch branch, string method, IReadOnlyList<string> pathTokens, 
+			int tokenIndex, RequestDictionary matchedTokens, List<RouteResult> matchedResults)
 		{
-			if (tokenIndex > pathTokens.Length - 1)
+			if (tokenIndex > pathTokens.Count - 1)
 				return matchedResults;
 			var token = pathTokens[tokenIndex];
 			foreach (var child in branch.Children)
 			{
 				if (child.Token.Text != null)
 				{
-					if (child.Token.Text != token)
+					if (child.Token.Text != token || child.Routes == null)
 						continue;
-					if (child.Route != null && child.Route.Methods.Contains(method))
-						matchedResults.Add(new RouteResult { Route = child.Route, Vars = matchedTokens });
+					foreach (var route in child.Routes)
+						if (route.Methods.Contains(method))
+							matchedResults.Add(new RouteResult { Route = route, Vars = matchedTokens });
 					BranchSearch(child, method, pathTokens, tokenIndex + 1, matchedTokens, matchedResults);
 				}
 				else if (child.Token.MatchAny || child.Token.Matcher != null)
-				{
+				{	
 					if (child.Token.Matcher != null)
 					{
 						var match = child.Token.Matcher.Match(token);
 						if (!match.Success) continue;	
 					}
-					
-					if (child.Route != null && child.Route.Methods.Contains(method))
-					{
-						var name = child.Token.Name;
-						if (child.Token.Greedy)
-							matchedTokens[name] = String.Join('/', pathTokens.Skip(tokenIndex));
-						else
-							matchedTokens[name] = token;
-						matchedResults.Add(new RouteResult { Route = child.Route, Vars = matchedTokens });
-					}
+					var name = child.Token.Name;
+					if (child.Token.Greedy)
+						matchedTokens[name] = string.Join('/', pathTokens.Skip(tokenIndex));
+					else
+						matchedTokens[name] = token;
+					if (child.Routes != null)
+						foreach( var route in child.Routes )
+							if (route.Methods.Contains(method))
+								matchedResults.Add(new RouteResult { Route = route, Vars = matchedTokens });
 					if (!child.Token.Greedy)	
-						BranchSearch(child, method, pathTokens, tokenIndex + 1, matchedTokens, matchedResults);
+						BranchSearch(child, method, pathTokens, tokenIndex + 1, new RequestDictionary(matchedTokens), matchedResults);
 				}	
 			}
 			return matchedResults;

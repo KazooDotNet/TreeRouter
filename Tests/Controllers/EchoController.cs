@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using TreeRouter;
 
-namespace Tests
+namespace Tests.Controllers
 {
 	public class EchoController : IController
 	{
