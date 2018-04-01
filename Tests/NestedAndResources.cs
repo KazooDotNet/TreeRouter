@@ -1,17 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using Tests.Controllers;
+using TreeRouter;
 using Xunit;
 
 namespace Tests
 {
 	public class NestedAndResources : Base
 	{
-
-		public NestedAndResources() : base()
-		{
-		}
-		
 		[Fact]
 		public void Resources()
 		{
@@ -42,6 +38,59 @@ namespace Tests
 
 			response = DispatchAndRead("/things/new", "get");
 			Assert.Equal("New", response);
+		}
+
+		[Fact]
+		public void Resource()
+		{
+			_router.Map( r => r.Resource<ResourcesController>("things") );
+			Assert.Equal("Show", DispatchAndRead("/things", "get"));
+			Assert.Equal("Edit", DispatchAndRead("/things/edit", "get"));
+			Assert.Equal("New", DispatchAndRead("/things/new", "get"));
+			Assert.Equal("Create", DispatchAndRead("/things", "post"));
+			Assert.Equal("Update", DispatchAndRead("/things", "put"));
+			Assert.Equal("Update", DispatchAndRead("/things", "patch"));
+			Assert.Equal("Delete", DispatchAndRead("/things", "delete"));
+		}
+
+		[Fact]
+		public void NestedUnderMember()
+		{
+			_router.Map(r =>
+			{
+				r.Resources<ResourcesController>("things")
+					.OnMember(mem =>
+					{
+						mem.Get("/stuff").NullAction();
+						mem.Resources<ResourcesController>("widgies");
+					});
+			});
+			var result = _router.MatchPath("/things/1/stuff", "get");
+			Assert.True(result.Found);
+			Assert.Equal("1", result.Vars["resource_id"]);
+			result = _router.MatchPath("/things/1/widgies/2", "get");
+			Assert.True(result.Found);
+			Assert.Equal("1", result.Vars["resource_id"]);
+			Assert.Equal("2", result.Vars["id"]);
+		}
+
+		[Fact]
+		public void NestedUnderCollection()
+		{
+			_router.Map(r =>
+			{
+				r.Resources<ResourcesController>("things")
+					.OnCollection(col =>
+					{
+						col.Get("/stuff").NullAction();
+						col.Resources<ResourcesController>("widgies");
+					});
+			});
+			var result = _router.MatchPath("/things/stuff", "get");
+			Assert.True(result.Found);
+			result = _router.MatchPath("/things/widgies/1", "get");
+			Assert.True(result.Found);
+			Assert.Equal("1", result.Vars["id"]);
 		}
 		
 	}

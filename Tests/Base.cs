@@ -3,6 +3,7 @@ using System.ComponentModel.Design;
 using System.IO;
 using System.Linq;
 using System.Runtime.ExceptionServices;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -44,8 +45,8 @@ namespace Tests
 		{
 			try
 			{
-				var task = _router.Dispatch(context);
-				task.Wait();
+				var task = new Task( () => _router.Dispatch(context) );
+				task.RunSynchronously();
 			}
 			catch (AggregateException e)
 			{

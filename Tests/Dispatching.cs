@@ -11,13 +11,6 @@ namespace Tests
 {
 	public class Dispatching : Base
 	{
-		
-		private Router _router;
-		
-		public Dispatching()
-		{
-			
-		}
 
 		[Fact]
 		public void DispatchesAction()

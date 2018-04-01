@@ -25,12 +25,12 @@ namespace TreeRouter
 		
 		public ResourcesBuilder<T> OnMember(Action<RouteBuilder> map, string pathName = null)
 		{
-			var name = pathName ?? typeof(T).Name.Singularize().Underscore();
+			var name = pathName ?? typeof(T).Name.Replace("Controller", "").Singularize().Underscore();
 			var options = Utils.MergeOptions(Options);
 			options.Path = Utils.JoinPath(options.Path, $"{{{name}_id}}");
 			var rb = new RouteBuilder(options);
-			Children.Add(rb);
 			map.Invoke(rb);
+			Children.Add(rb);
 			return this;
 		}
 
