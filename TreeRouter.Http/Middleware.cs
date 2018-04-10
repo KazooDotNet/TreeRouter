@@ -2,13 +2,13 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 
-namespace TreeRouter
+namespace TreeRouter.Http
 {
 	public class Middleware
 	{
 
-		private IRouter _router;
-		private RequestDelegate _next;
+		private readonly IRouter _router;
+		private readonly RequestDelegate _next;
 
 		public Middleware(RequestDelegate next, IRouter router)
 		{

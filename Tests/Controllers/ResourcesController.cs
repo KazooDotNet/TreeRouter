@@ -9,7 +9,8 @@ namespace Tests.Controllers
 		public async Task Route(Request routerRequest)
 		{
 			var vars = routerRequest.RouteVars;
-			await routerRequest.Context.Response.WriteAsync(vars["action"]);
+			var context = (HttpContext) routerRequest.Context;
+			await context.Response.WriteAsync(vars["action"]);
 		}
 	}
 }

@@ -12,7 +12,8 @@ namespace Tests.Controllers
 			string response = "";
 			if (vars.ContainsKey("responseText"))
 				response = vars["responseText"];
-			await routerRequest.Context.Response.WriteAsync(response);
+			var context = (HttpContext) routerRequest.Context;
+			await context.Response.WriteAsync(response);
 		}
 	}
 }

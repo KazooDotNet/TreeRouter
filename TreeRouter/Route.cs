@@ -9,9 +9,9 @@ namespace TreeRouter
 	public class Route
 	{
 		
-		private static Regex plainVar = new Regex(@"\s*{\s*(\w+)\s*}\s*");
-		private static Regex optionalVar = new Regex(@"\s*{\s*(\w+)\s*\?\s*}\s*");
-		private static Regex greedyVar = new Regex(@"\s*{\s*(\w+)\s*\*\s*}\s*");
+		private static readonly Regex plainVar = new Regex(@"\s*{\s*(\w+)\s*}\s*");
+		private static readonly Regex optionalVar = new Regex(@"\s*{\s*(\w+)\s*\?\s*}\s*");
+		private static readonly Regex greedyVar = new Regex(@"\s*{\s*(\w+)\s*\*\s*}\s*");
 		
 		public List<RouteToken> Tokens { get; private set; }
 		public int LiteralTokenCount { get; private set; }
@@ -109,7 +109,7 @@ namespace TreeRouter
 				var token = Tokens[index];
 				if (token.MatchAny || token.Matcher != null)
 				{
-					rd[token.Name] = token.Greedy ? string.Join('/', parts.Skip(index)) : part;
+					rd[token.Name] = token.Greedy ? string.Join("/", parts.Skip(index)) : part;
 					if (token.Greedy) return rd;
 				}
 				index++;

@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Tests.Controllers;
 using TreeRouter;
+using TreeRouter.Http;
 
 namespace Tests
 {

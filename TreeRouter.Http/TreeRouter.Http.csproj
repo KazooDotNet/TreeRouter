@@ -1,20 +1,21 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <LangVersion>7.1</LangVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Humanizer.Core" Version="2.2.0" />
-    <PackageReference Include="MessagePack" Version="1.7.3.4" />
+    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.0.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TreeRouter\TreeRouter.csproj" />
   </ItemGroup>
   <PropertyGroup>
-    <PackageId>TreeRouter</PackageId>
-    <Title>Tree Router</Title>
+    <PackageId>TreeRouter.Http</PackageId>
+    <Title>Tree Router - Http Adapter</Title>
     <VersionPrefix>0.9.1</VersionPrefix>
     <VersionSuffix />
     <PackageProjectUrl>https://github.com/AccentuateMe/TreeRouter</PackageProjectUrl>
-    <Description>A router which maps out path nodes to reduce the number of routes to match, increasing speed.</Description>
-    <PackageTags>router;dotnet standard;modular</PackageTags>
+    <Description>TreeRouter for .NetCore apps</Description>
+    <PackageTags>router;dotnet core;modular</PackageTags>
     <Copyright>Copyright 2018 Accentuate.Me LLC - MIT</Copyright>
     <IncludeSource>true</IncludeSource>
   </PropertyGroup>

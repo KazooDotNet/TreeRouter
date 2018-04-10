@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.ComponentModel.Design;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 
 namespace TreeRouter
 {
@@ -13,7 +12,7 @@ namespace TreeRouter
 		void Compile();
 		void Map(string prefix, Action<RouteBuilder> action);
 		void Map(Action<RouteBuilder> action);
-		Task Dispatch(HttpContext context);
+		Task Dispatch(string path, string method, object context);
 	}
 	
 	public class Router : IRouter
@@ -113,22 +112,14 @@ namespace TreeRouter
 			return result;
 		}
 		
-		public Task Dispatch(HttpContext context)
-		{
-			var req = context.Request;
-			var path = req.PathBase == null ? 
-				req.Path.ToString() : req.PathBase.ToString().TrimEnd('/') + '/' + req.Path.ToString().TrimStart('/');
-			var method = req.Method.ToLower();
-			var contentType = context.Request.ContentType ?? "";
-			if (method == "post" && contentType.Contains("form") && context.Request.Form.ContainsKey("_method"))
-				method = context.Request.Form["_method"];
-				
+		public Task Dispatch(string path, string method, object context)
+		{		
 			var result = MatchPath(path, method);
 			if (!result.Found)
 				return Task.FromException(new Errors.RouteNotFound("No route was found that matches the requested path")
 				{
 					Path = path,
-					Method = req.Method
+					Method = method
 				});
 			var request = new Request { Context = context, RouteVars = result.Vars };
 			
@@ -140,7 +131,7 @@ namespace TreeRouter
 				return Task.FromException(new Errors.RouteNotFound("No handler on route. This is a bug, please report it")
 				{
 					Path = path,
-					Method = req.Method
+					Method = method
 				});
 
 			if (!(_container.GetService(result.Route.ClassHandler) is IController controller))
@@ -185,7 +176,7 @@ namespace TreeRouter
 					}
 					var name = child.Token.Name;
 					if (child.Token.Greedy)
-						matchedTokens[name] = string.Join('/', pathTokens.Skip(tokenIndex));
+						matchedTokens[name] = string.Join("/", pathTokens.Skip(tokenIndex));
 					else
 						matchedTokens[name] = token;
 					if (child.Routes != null)
