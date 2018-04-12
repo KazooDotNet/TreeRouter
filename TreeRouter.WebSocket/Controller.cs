@@ -10,6 +10,7 @@ namespace TreeRouter.WebSocket
 
 		protected RequestDictionary RouteVars;
 		protected HandlerMessage Context;
+		protected MessageRequest Request => Context.Request;
 		protected IHandler Handler => Context.Handler;
 
 		protected Task ReplyMessage(MessageResponse message, CancellationToken token = default(CancellationToken)) =>

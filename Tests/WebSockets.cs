@@ -25,7 +25,7 @@ namespace Tests
 			};
 			client.Start();
 			await client.SendAsync(message);
-			await Task.Delay(30000, tokenSource.Token);
+			await Task.Delay(30000, tokenSource.Token).ContinueWith(t => { });
 			Assert.Equal("test", response);
 		}
 		

@@ -110,7 +110,7 @@ namespace TreeRouter.WebSocket
 	      });
 
 		  hm.Handler = this;
-		  
+		  hm.Request = message;
 		  try
 		  {
 			  return Router.Dispatch(message.Path, message.Method, hm);

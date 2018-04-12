@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,6 +41,8 @@ namespace TreeRouter.WebSocket
 			return app.Map(path, _app =>
 				_app.UseMiddleware<UpgradeConnection>(handler, subProtocols, router));
 		}
+		
+		
 
 
 		// TODO: implement WebSocket handler for RouteBuilder

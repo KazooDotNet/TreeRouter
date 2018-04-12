@@ -10,6 +10,7 @@ namespace TreeRouter.WebSocket
     public string Subprotocol { get; set; }
     public string BasePath { get; set; }
     public RequestDictionary RouteVars { get; set; }
+    public MessageRequest Request { get; set; }
     public IHandler Handler { get; set; }
   }
 }
