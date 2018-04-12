@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Net.WebSockets;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,20 +11,22 @@ namespace TreeRouter.WebSocket
 {
     public class Client : IDisposable
     {
-        private readonly ClientWebSocket _socket;
+        protected readonly ClientWebSocket Socket;
         readonly string _uri;
-        private CancellationTokenSource _tokenSource;
+        protected CancellationTokenSource TokenSource;
 
-        public bool Open { get; set; }
+        public bool Open { get; private set; }
         public event EventHandler MessageReceived;
+        protected ConcurrentDictionary<string, MessageCallback?> Listeners { get; }
 
         public Client(string uri, string[] subprotocols = null)
         {
-            _socket = new ClientWebSocket();
+            Socket = new ClientWebSocket();
             if (subprotocols != null)
                 foreach (var sp in subprotocols)
-                    _socket.Options.AddSubProtocol(sp);
+                    Socket.Options.AddSubProtocol(sp);
             _uri = uri;
+            Listeners = new ConcurrentDictionary<string, MessageCallback?>();
         }
 
         public void Start() => StartAsync().GetAwaiter().GetResult();
@@ -30,11 +34,12 @@ namespace TreeRouter.WebSocket
         public async Task StartAsync()
         {
             if (Open) return;
-            _tokenSource = new CancellationTokenSource();
-            var token = _tokenSource.Token;
-            await _socket.ConnectAsync(new Uri(_uri), token);
+            TokenSource = new CancellationTokenSource();
+            var token = TokenSource.Token;
+            await Socket.ConnectAsync(new Uri(_uri), token);
             Open = true;
-			ReceiveAsync(token);    
+			ReceiveAsync(token);
+            Sweep(token);
         }
 
         public void Stop(bool graceful = true) => StopAsync(graceful).GetAwaiter().GetResult();
@@ -43,13 +48,18 @@ namespace TreeRouter.WebSocket
         {
             if (!Open) return;
             Open = false;
-            _tokenSource.Cancel();
             var token = CancellationToken.None;
             const WebSocketCloseStatus closure = WebSocketCloseStatus.NormalClosure;
             if (graceful)
-                await _socket.CloseAsync(closure, "", token).ConfigureAwait(false);
+            {
+                await Socket.CloseOutputAsync(closure, "", token).ConfigureAwait(false);
+                TokenSource.Cancel();
+            }
             else
-                await _socket.CloseOutputAsync(closure, "", token).ConfigureAwait(false);
+            {
+                await Socket.CloseAsync(closure, "", token).ConfigureAwait(false);
+                TokenSource.Cancel();
+            }
         }
 
         public async Task SendAsync(MessageRequest msg)
@@ -57,22 +67,55 @@ namespace TreeRouter.WebSocket
             if (msg.Id == null) msg.Id = Guid.NewGuid().ToString();
             var encoded = JsonConvert.SerializeObject(msg);
             var bytes = Encoding.UTF8.GetBytes(encoded);
-            await _socket.SendAsync(new ArraySegment<byte>(bytes),
+            await Socket.SendAsync(new ArraySegment<byte>(bytes),
                                    WebSocketMessageType.Text, true,
                                    CancellationToken.None).ConfigureAwait(false);
         }
+
+        public async Task SendAsync(MessageRequest msg, Func<MessageResponse, bool?> callback, TimeSpan? timeout = null)
+        {
+            var callbackStruct = new MessageCallback
+            {
+                TaskCompleter = new TaskCompletionSource<bool>(),
+                Expires = DateTime.Now.Add(timeout ?? TimeSpan.FromMinutes(1)),
+                Callback = callback 
+            }; 
+            Listeners.TryAdd(msg.Id, callbackStruct);
+            await SendAsync(msg);
+            await callbackStruct.TaskCompleter.Task;
+        }
+
+        private async void Sweep(CancellationToken token)
+        {
+            while (true)
+            {
+                    
+                foreach (var pair in Listeners)
+                    if (pair.Value.Value.Expires < DateTime.Now)
+                    {
+                        Listeners.TryRemove(pair.Key, out var listener);
+                        listener?.Callback(new MessageResponse {Timeout = true});
+                        listener?.TaskCompleter.SetResult(true);
+                    }
+                if (token.IsCancellationRequested)
+                    break;
+                await Task.Delay(10);
+            }
+        }
+        
+        
 
         private async void ReceiveAsync(CancellationToken token)
         {
             var buffer = new byte[1024 * 4];
             var done = false;
-            MessageResponse message;
             while(!done)
             {
                 if (token.IsCancellationRequested) break;
-                var result = await _socket.ReceiveAsync(new ArraySegment<byte>(buffer),
+                var result = await Socket.ReceiveAsync(new ArraySegment<byte>(buffer),
                                                        token).ConfigureAwait(false);
-                message = null;
+                MessageResponse message = null;
+                // TODO: make serializers more modular
                 switch(result.MessageType)
                 {
                     case WebSocketMessageType.Text:
@@ -84,13 +127,22 @@ namespace TreeRouter.WebSocket
                         done = true;
                         break;
                     case WebSocketMessageType.Binary:
+                        // TODO implement binary protocols
                         break;
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
 
-                if (message != null)
-                    MessageReceived?.Invoke(this, new MessageEventArgs { Message = message });
+                if (message == null) continue;
+                MessageReceived?.Invoke(this, new MessageEventArgs { Message = message });
+                if (message.Id == null) continue;
+                Listeners.TryGetValue(message.Id, out var listener);
+                if (listener == null)  continue;
+                var l = listener.Value;
+                var keep = l.Callback(message);
+                if (keep != true)
+                    Listeners.TryRemove(message.Id, out var _);
+                l.TaskCompleter.SetResult(true);
             }
         }
 
