@@ -2,7 +2,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 using MessagePack;
 using MessagePack.Resolvers;
 
@@ -55,6 +57,58 @@ namespace TreeRouter
 			foreach (var t in list)
 				t?.ToList().ForEach(pair => merged[pair.Key] = pair.Value);
 			return merged;
+		}
+		
+		public static async Task<T> ExtractRefTask<T>(object obj) where T : class
+		{
+			try
+			{
+				switch (obj)
+				{
+					case Task<T> objTask: return await objTask;
+					case Task task:  await task; return null;
+					default: return (T) obj;
+				}	
+			}
+			catch (AggregateException e)
+			{
+				ExceptionDispatchInfo.Capture(e.InnerExceptions.First()).Throw();
+			}
+
+			return default;
+		}
+
+		public static async Task ExtractVoidTask(object obj)
+		{
+			try
+			{
+				if (obj is Task task)
+					await task;	
+			}
+			catch (AggregateException e)
+			{
+				ExceptionDispatchInfo.Capture(e.InnerExceptions.First()).Throw();
+			}
+		}
+		
+
+		public static async Task<T?> ExtractValTask<T>(object obj) where T : struct
+		{
+			try
+			{
+				switch (obj)
+				{
+					case Task<T> objTask: return await objTask;
+					case Task task:  await task; return null;
+					default: return (T?) obj;
+				}	
+			}
+			catch (AggregateException e)
+			{
+				ExceptionDispatchInfo.Capture(e.InnerExceptions.First()).Throw();
+			}
+
+			return default;
 		}
 		
 	}

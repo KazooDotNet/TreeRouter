@@ -6,6 +6,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TreeRouter.Http", "TreeRouter.Http\TreeRouter.Http.csproj", "{472269BE-FED4-4118-98C0-0DFD88AA303A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TreeRouter.WebSocket", "TreeRouter.WebSocket\TreeRouter.WebSocket.csproj", "{711CCD4B-9383-45BD-ABA4-52B1A36F071C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebAndSocketTester", "WebAndSocketTester\WebAndSocketTester.csproj", "{34FC7B97-1428-45DE-B52B-1D8989F05C69}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +28,13 @@ Global
 		{472269BE-FED4-4118-98C0-0DFD88AA303A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{472269BE-FED4-4118-98C0-0DFD88AA303A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{472269BE-FED4-4118-98C0-0DFD88AA303A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{711CCD4B-9383-45BD-ABA4-52B1A36F071C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{711CCD4B-9383-45BD-ABA4-52B1A36F071C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{711CCD4B-9383-45BD-ABA4-52B1A36F071C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{711CCD4B-9383-45BD-ABA4-52B1A36F071C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{34FC7B97-1428-45DE-B52B-1D8989F05C69}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{34FC7B97-1428-45DE-B52B-1D8989F05C69}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{34FC7B97-1428-45DE-B52B-1D8989F05C69}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{34FC7B97-1428-45DE-B52B-1D8989F05C69}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

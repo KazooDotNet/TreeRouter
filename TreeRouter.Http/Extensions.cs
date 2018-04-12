@@ -12,7 +12,8 @@ namespace TreeRouter.Http
 		
 		public static IServiceCollection AddTreeMap(this IServiceCollection collection, Assembly[] assemblies)
 		{
-			collection.AddSingleton<IRouter, Router>();
+			// TODO: is this sufficient for use in multiple routers?
+			collection.AddTransient<IRouter, Router>();
 			var icType = typeof(IController);
 			foreach (var assembly in assemblies)
 			foreach (var type in assembly.ExportedTypes)
@@ -28,18 +29,12 @@ namespace TreeRouter.Http
 			AddTreeMap(collection, new[] { Assembly.GetExecutingAssembly(), Assembly.GetEntryAssembly() });
 		
 
-		private static bool _middlewareInstalled;
-
 		public static IApplicationBuilder TreeMap(this IApplicationBuilder builder, string prefix, 
 			Action<RouteBuilder> action)
 		{
-			if (!_middlewareInstalled)
-			{
-				builder.UseMiddleware<Middleware>();
-				_middlewareInstalled = true;
-			}
 			var router = builder.ApplicationServices.GetService<IRouter>();
 			router.Map(prefix, action);
+			builder.UseMiddleware<Middleware>(router);
 			return builder;
 		}
 

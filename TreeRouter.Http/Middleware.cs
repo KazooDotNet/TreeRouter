@@ -9,7 +9,7 @@ namespace TreeRouter.Http
 
 		private readonly IRouter _router;
 		private readonly RequestDelegate _next;
-
+		
 		public Middleware(RequestDelegate next, IRouter router)
 		{
 			_router = router;

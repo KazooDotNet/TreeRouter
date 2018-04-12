@@ -78,7 +78,7 @@ namespace TreeRouter
 
 		public RouteResult MatchPath(string path, string method)
 		{
-			var tokens = path.Trim('/').Split('/');
+			var tokens = (path ?? "").Trim('/').Split('/');
 			var matchedResults = BranchSearch(Root, method, tokens);
 			RouteResult result = null;
 			switch (matchedResults.Count)

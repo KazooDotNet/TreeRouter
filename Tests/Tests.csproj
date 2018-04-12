@@ -13,6 +13,10 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TreeRouter.Http\TreeRouter.Http.csproj" />
+    <ProjectReference Include="..\TreeRouter.WebSocket\TreeRouter.WebSocket.csproj">
+      <Project>{711CCD4B-9383-45BD-ABA4-52B1A36F071C}</Project>
+      <Name>TreeRouter.WebSocket</Name>
+    </ProjectReference>
     <ProjectReference Include="..\TreeRouter\TreeRouter.csproj" />
   </ItemGroup>
 </Project>
