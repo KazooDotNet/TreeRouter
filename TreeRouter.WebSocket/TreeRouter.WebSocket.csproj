@@ -10,4 +10,15 @@
     <PackageReference Include="Microsoft.AspNetCore.WebSockets" Version="2.0.2" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
   </ItemGroup>
+  <PropertyGroup>
+    <PackageId>TreeRouter.WebSocket</PackageId>
+    <Title>Websockets with Tree Router</Title>
+    <VersionPrefix>0.9.1</VersionPrefix>
+    <VersionSuffix />
+    <PackageProjectUrl>https://github.com/AccentuateMe/TreeRouter</PackageProjectUrl>
+    <Description>WebSockets with TreeRouter convenience</Description>
+    <PackageTags>router;dotnet standard;modular</PackageTags>
+    <Copyright>Copyright 2018 Accentuate.Me LLC - MIT</Copyright>
+    <IncludeSource>true</IncludeSource>
+  </PropertyGroup>
 </Project>
