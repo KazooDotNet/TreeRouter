@@ -14,15 +14,13 @@ namespace TreeRouter.WebSocket
     private readonly RequestDelegate _next;
     private IHandler Handler { get; }
     private string[] Protocols { get; }
-    private IRouter Router { get; }
 
-    public UpgradeConnection(RequestDelegate next, IHandler webSocketHandler,
-      string[] protocols, IRouter router)
+    public UpgradeConnection(RequestDelegate next, IHandler webSocketHandler, string[] protocols, IRouter router)
     {
       _next = next;
       Handler = webSocketHandler;
+      Handler.Router = router;
       Protocols = protocols;
-      Router = router;
     }
 
     public async Task Invoke(HttpContext context)
@@ -82,7 +80,7 @@ namespace TreeRouter.WebSocket
       return selectedProtocol ?? Protocols[0];
     }
 
-    private async Task Receive(WebSocker socket, Action<WebSocketReceiveResult, string> handleMessage)
+    private static async Task Receive(System.Net.WebSockets.WebSocket socket, Action<WebSocketReceiveResult, string> handleMessage)
     {
       while (socket.State == WebSocketState.Open)
       {

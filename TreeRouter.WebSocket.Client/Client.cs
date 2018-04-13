@@ -1,15 +1,15 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
-using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
+
 namespace TreeRouter.WebSocket
 {
-    public class Client : IDisposable
+	public class Client : IDisposable
     {
         protected readonly ClientWebSocket Socket;
         readonly string _uri;

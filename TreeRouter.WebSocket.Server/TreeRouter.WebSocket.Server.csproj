@@ -4,16 +4,13 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\TreeRouter.Http\TreeRouter.Http.csproj" />
+    <ProjectReference Include="..\TreeRouter.WebSocket.Common\TreeRouter.WebSocket.Common.csproj" />
     <ProjectReference Include="..\TreeRouter\TreeRouter.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.WebSockets" Version="2.0.2" />
-    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
-  </ItemGroup>
   <PropertyGroup>
-    <PackageId>TreeRouter.WebSocket</PackageId>
+    <PackageId>TreeRouter.WebSocket.Server</PackageId>
     <Title>Websockets with Tree Router</Title>
-    <VersionPrefix>0.9.1</VersionPrefix>
+    <VersionPrefix>0.9.4</VersionPrefix>
     <VersionSuffix />
     <PackageProjectUrl>https://github.com/AccentuateMe/TreeRouter</PackageProjectUrl>
     <Description>WebSockets with TreeRouter convenience</Description>

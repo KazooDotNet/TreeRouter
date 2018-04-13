@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Humanizer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,7 +13,7 @@ namespace TreeRouter.Http
 	public static class Extensions
 	{
 		
-		public static IServiceCollection AddTreeMap(this IServiceCollection collection, Assembly[] assemblies)
+		public static IServiceCollection AddTreeMap(this IServiceCollection collection, IEnumerable<Assembly> assemblies)
 		{
 			// TODO: is this sufficient for use in multiple routers?
 			collection.AddTransient<IRouter, Router>();
@@ -24,10 +27,13 @@ namespace TreeRouter.Http
 
 		public static IServiceCollection AddTreeMap(this IServiceCollection collection, Assembly assembly) =>
 			AddTreeMap(collection, new[] { assembly });
-		
-		public static IServiceCollection AddTreeMap(this IServiceCollection collection) =>
-			AddTreeMap(collection, new[] { Assembly.GetExecutingAssembly(), Assembly.GetEntryAssembly() });
-		
+
+		public static IServiceCollection AddTreeMap(this IServiceCollection collection)
+		{
+			var assemblies = Assembly.GetEntryAssembly().GetReferencedAssemblies().Select(Assembly.Load).ToList();
+			assemblies.Add(Assembly.GetEntryAssembly());
+			return AddTreeMap(collection, assemblies);
+		}
 
 		public static IApplicationBuilder TreeMap(this IApplicationBuilder builder, string prefix, 
 			Action<RouteBuilder> action)

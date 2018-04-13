@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace TreeRouter.WebSocket
 {
-	public class Controller : IController
+	public abstract class Controller : IController
 	{
 
 		protected RequestDictionary RouteVars;

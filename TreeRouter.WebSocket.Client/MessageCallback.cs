@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using TreeRouter.WebSocket;
 
 namespace TreeRouter.WebSocket
 {
