@@ -34,11 +34,13 @@ namespace TreeRouter.WebSocket
             Watchers = new ConcurrentDictionary<string, List<Func<MessageResponse, bool?>>>();
         }
 
-        public void Start() => StartAsync().GetAwaiter().GetResult();
+        public void Start(Action<ClientWebSocket> callback = null) => StartAsync(callback).GetAwaiter().GetResult();
 
-        public async Task StartAsync()
+        public async Task StartAsync(Action<ClientWebSocket> callback = null)
         {
             if (Open) return;
+            if (callback != null)
+                callback.Invoke(Socket);
             TokenSource = new CancellationTokenSource();
             var token = TokenSource.Token;
             await Socket.ConnectAsync(new Uri(_uri), token);
@@ -146,7 +148,7 @@ namespace TreeRouter.WebSocket
                 
                 MessageReceived?.Invoke(this, new MessageEventArgs { Message = message });
                 
-                if (Watchers.ContainsKey(message.Path))
+                if (message.Path != null && Watchers.ContainsKey(message.Path))
                     lock (Watchers[message.Path])
                     {
                         var removeThese = new List<int>();
