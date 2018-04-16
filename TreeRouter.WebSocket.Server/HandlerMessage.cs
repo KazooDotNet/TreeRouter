@@ -1,4 +1,5 @@
 ﻿using System.Net.WebSockets;
+using Microsoft.AspNetCore.Http;
 
 namespace TreeRouter.WebSocket
 {
@@ -12,5 +13,6 @@ namespace TreeRouter.WebSocket
     public RequestDictionary RouteVars { get; set; }
     public MessageRequest Request { get; set; }
     public IHandler Handler { get; set; }
+    public HttpContext HttpContext { get; set; }
   }
 }

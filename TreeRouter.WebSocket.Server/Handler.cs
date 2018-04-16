@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net.WebSockets;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using TreeRouter.Errors;
 
 namespace TreeRouter.WebSocket
 {
@@ -12,9 +14,9 @@ namespace TreeRouter.WebSocket
 	{
 		Task OnConnected(WebSocker socket);
 		Task OnDisconnected(WebSocker socket);
-		Task SendMessage(WebSocker socket, MessageResponse message, CancellationToken token);
-		Task SendMessage(string socketId, MessageResponse message, CancellationToken token);
-		Task SendMessageToAll(MessageResponse message, CancellationToken token);
+		Task SendMessage(WebSocker socket, MessageResponse message, CancellationToken token = default(CancellationToken));
+		Task SendMessage(string socketId, MessageResponse message, CancellationToken token = default(CancellationToken));
+		Task SendMessageToAll(MessageResponse message, CancellationToken token = default(CancellationToken));
 		IRouter Router { set; }
 	}
 
@@ -110,19 +112,28 @@ namespace TreeRouter.WebSocket
 
 		  hm.Handler = this;
 		  hm.Request = message;
+		  
 		  try
 		  {
 			  return Router.Dispatch(message.Path, message.Method, hm);
 		  }
-		  catch (Errors.RouteNotFound)
+		  catch (Exception e)
 		  {
-			  return SendMessage(hm.Socket, new MessageResponse(message)
+			  while (e.InnerException != null)
+				  e = e.InnerException;
+			  if (e is RouteNotFound)
 			  {
-				  MessageType = MessageType.Error,
-				  Status = 404,
-				  Errors = new MessageData {["Message"] = "Route not found"}
-			  });
+				  return SendMessage(hm.Socket, new MessageResponse(message)
+				  {
+					  MessageType = MessageType.Error,
+					  Status = 404,
+					  Errors = new MessageData {["Message"] = "Route not found"}
+				  });
+			  }
+			  ExceptionDispatchInfo.Capture(e).Throw();
 		  }
+
+		  return Task.CompletedTask;
 	  }
 
 	  private static MessageRequest DeserializeJson(string serialized)

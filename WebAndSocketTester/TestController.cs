@@ -3,14 +3,24 @@ using TreeRouter.WebSocket;
 
 namespace WebAndSocketTester
 {
-	public class EchoController : Controller
+	public class TestController : Controller
 	{
-		public Task Perform()
+		public Task Echo()
 		{
 			return ReplyMessage(new MessageResponse(Context.Request)
 			{
 				Data = new MessageData { {"Echo", RouteVars.Get<string>("echo") } }
 			});
+		}
+
+		// Rude...
+		public void Ignore()
+		{
+		}
+
+		public Task TriggerWelcome()
+		{
+			return ReplyMessage(new MessageResponse { Path = "/welcome" });
 		}
 	}
 }

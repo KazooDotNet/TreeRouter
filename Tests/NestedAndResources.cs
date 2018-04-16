@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using Tests.Controllers;
 using TreeRouter;
 using Xunit;
@@ -91,6 +92,29 @@ namespace Tests
 			result = _router.MatchPath("/things/widgies/1", "get");
 			Assert.True(result.Found);
 			Assert.Equal("1", result.Vars["id"]);
+		}
+
+		[Fact]
+		public void MapWithController()
+		{
+			_router.Map(r => { 
+				r.Map<ResourcesController>(rc =>
+				{
+					rc.Get("/test").Action("Show");
+					rc.Get("/another").Action("Show");
+					rc.Get("/{*blah}").Action("Show");
+				}); 
+			});
+			var result = _router.MatchPath("/test", "get");
+			Assert.True(result.Found);
+			Assert.Equal(result.Route.ClassHandler, typeof(ResourcesController));
+			result = _router.MatchPath("/another", "get");
+			Assert.True(result.Found);
+			Assert.Equal(result.Route.ClassHandler, typeof(ResourcesController));
+			result = _router.MatchPath("/sing/song", "get");
+			Assert.True(result.Found);
+			Assert.Equal(result.Route.ClassHandler, typeof(ResourcesController));
+			
 		}
 		
 	}

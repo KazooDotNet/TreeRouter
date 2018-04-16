@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
@@ -14,19 +15,23 @@ namespace TreeRouter.WebSocket
         protected readonly ClientWebSocket Socket;
         readonly string _uri;
         protected CancellationTokenSource TokenSource;
+        protected readonly IClock Clock; 
 
         public bool Open { get; private set; }
         public event EventHandler MessageReceived;
         protected ConcurrentDictionary<string, MessageCallback?> Listeners { get; }
+        protected ConcurrentDictionary<string, List<Func<MessageResponse, bool?>>> Watchers { get; }
 
-        public Client(string uri, string[] subprotocols = null)
+        public Client(string uri, string[] subprotocols = null, IClock clock = null)
         {
+            Clock = clock ?? new RealClock();
             Socket = new ClientWebSocket();
             if (subprotocols != null)
                 foreach (var sp in subprotocols)
                     Socket.Options.AddSubProtocol(sp);
             _uri = uri;
             Listeners = new ConcurrentDictionary<string, MessageCallback?>();
+            Watchers = new ConcurrentDictionary<string, List<Func<MessageResponse, bool?>>>();
         }
 
         public void Start() => StartAsync().GetAwaiter().GetResult();
@@ -51,15 +56,10 @@ namespace TreeRouter.WebSocket
             var token = CancellationToken.None;
             const WebSocketCloseStatus closure = WebSocketCloseStatus.NormalClosure;
             if (graceful)
-            {
                 await Socket.CloseOutputAsync(closure, "", token).ConfigureAwait(false);
-                TokenSource.Cancel();
-            }
             else
-            {
                 await Socket.CloseAsync(closure, "", token).ConfigureAwait(false);
-                TokenSource.Cancel();
-            }
+            TokenSource.Cancel();
         }
 
         public async Task SendAsync(MessageRequest msg)
@@ -77,7 +77,7 @@ namespace TreeRouter.WebSocket
             var callbackStruct = new MessageCallback
             {
                 TaskCompleter = new TaskCompletionSource<bool>(),
-                Expires = DateTime.Now.Add(timeout ?? TimeSpan.FromMinutes(1)),
+                Expires =  Clock.Now.Add(timeout ?? TimeSpan.FromMinutes(1)),
                 Callback = callback 
             }; 
             Listeners.TryAdd(msg.Id, callbackStruct);
@@ -88,10 +88,9 @@ namespace TreeRouter.WebSocket
         private async void Sweep(CancellationToken token)
         {
             while (true)
-            {
-                    
+            {       
                 foreach (var pair in Listeners)
-                    if (pair.Value.Value.Expires < DateTime.Now)
+                    if (pair.Value != null && pair.Value.Value.Expires < Clock.Now)
                     {
                         Listeners.TryRemove(pair.Key, out var listener);
                         listener?.Callback(new MessageResponse {Timeout = true});
@@ -100,6 +99,16 @@ namespace TreeRouter.WebSocket
                 if (token.IsCancellationRequested)
                     break;
                 await Task.Delay(10);
+            }
+        }
+
+        public void WatchFor(string path, Func<MessageResponse, bool?> callback)
+        {
+            if (!Watchers.ContainsKey(path))
+                Watchers.TryAdd(path, new List<Func<MessageResponse, bool?>>());
+            lock (Watchers[path])
+            {
+                Watchers[path].Add(callback);
             }
         }
         
@@ -134,7 +143,25 @@ namespace TreeRouter.WebSocket
                 }
 
                 if (message == null) continue;
+                
                 MessageReceived?.Invoke(this, new MessageEventArgs { Message = message });
+                
+                if (Watchers.ContainsKey(message.Path))
+                    lock (Watchers[message.Path])
+                    {
+                        var removeThese = new List<int>();
+                        var i = 0;
+                        foreach (var w in Watchers[message.Path])
+                        {
+                            var wKeep = w.Invoke(message);
+                            if (wKeep != true)
+                                removeThese.Add(i);
+                            i++;
+                        }
+                        removeThese.Reverse(); // IMPORTANT: make sure you reverse so that the larger numbers get removed first, prevents wrong indexes later on.
+                        foreach (var r in removeThese)
+                            Watchers[message.Path].RemoveAt(r);
+                    }
                 if (message.Id == null) continue;
                 Listeners.TryGetValue(message.Id, out var listener);
                 if (listener == null)  continue;

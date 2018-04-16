@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using TreeRouter.Errors;
 
 namespace TreeRouter.WebSocket
 {
@@ -15,21 +16,20 @@ namespace TreeRouter.WebSocket
     private IHandler Handler { get; }
     private string[] Protocols { get; }
 
-    public UpgradeConnection(RequestDelegate next, IHandler webSocketHandler, string[] protocols, IRouter router)
+    public UpgradeConnection(RequestDelegate next, IHandler webSocketHandler, string[] protocols)
     {
       _next = next;
       Handler = webSocketHandler;
-      Handler.Router = router;
       Protocols = protocols;
     }
 
     public async Task Invoke(HttpContext context)
     {
-      /*if (!context.WebSockets.IsWebSocketRequest)
+      if (!context.WebSockets.IsWebSocketRequest)
       {
         if (_next != null) await _next(context);
         return;
-      }*/
+      }
 
       var selectedProtocol = GetProtocol(
         context.Request.Headers["Sec-WebSocket-Protocol"]);
@@ -53,9 +53,9 @@ namespace TreeRouter.WebSocket
         var passedMessage = new HandlerMessage
         {
           Socket = socker, SocketResult = result, Serialized = message, Subprotocol = proto,
-          BasePath = context.Request.Path
+          BasePath = context.Request.Path, HttpContext = context
         };
-        await Handler.Route(new Request { Context = passedMessage });
+        await Handler.Route(new Request {Context = passedMessage});
       });
     }
 

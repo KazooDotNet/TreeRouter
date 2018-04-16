@@ -16,7 +16,7 @@ namespace TreeRouter
 		public RouteBuilder Map(RouteOptions options, Action<RouteBuilder> map)
 		{
 			var opts = Utils.MergeOptions(Options, options);
-			var rb = new RouteBuilder(opts) { Options = {Path = Utils.JoinPath(Options.Path, options.Path)} };
+			var rb = new RouteBuilder(opts) { Options = { Path = Utils.JoinPath(Options.Path, options.Path) } };
 			Children.Add(rb);
 			map.Invoke(rb);
 			return rb;

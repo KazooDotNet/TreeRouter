@@ -18,9 +18,12 @@ namespace WebAndSocketTester
 		public void Configure(IApplicationBuilder app)
 		{
 			app
+				.UseMiddleware<ErrorCatcher>()
 				.MapWebSockets("/ws", new[] {"rest.json"}, r =>
 				{
-					r.Get<EchoController>("/{echo}").Action("Perform");
+					r.Get<TestController>("/trigger-welcome").Action("TriggerWelcome");
+					r.Get<TestController>("/ignore").Action("Ignore");
+					r.Get<TestController>("/{echo}").Action("Echo");
 				})
 				.TreeMap(r =>
 				{

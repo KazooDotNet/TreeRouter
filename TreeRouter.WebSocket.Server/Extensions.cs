@@ -39,7 +39,7 @@ namespace TreeRouter.WebSocket
 			router.Map(action);
 			handler.Router = router;
 			return app.Map(path, _app =>
-				_app.UseMiddleware<UpgradeConnection>(handler, subProtocols, router));
+				_app.UseMiddleware<UpgradeConnection>(handler, subProtocols));
 		}
 		
 		

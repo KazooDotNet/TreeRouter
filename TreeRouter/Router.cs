@@ -113,7 +113,13 @@ namespace TreeRouter
 		}
 		
 		public Task Dispatch(string path, string method, object context)
-		{		
+		{
+			if (string.IsNullOrWhiteSpace(method))
+				return Task.FromException(new Errors.RouteNotFound("Method parameter is blank. No routes will match")
+				{
+					Path = path,
+					Method = method
+				});
 			var result = MatchPath(path, method);
 			if (!result.Found)
 				return Task.FromException(new Errors.RouteNotFound("No route was found that matches the requested path")
