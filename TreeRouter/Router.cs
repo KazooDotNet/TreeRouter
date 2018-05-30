@@ -31,7 +31,7 @@ namespace TreeRouter
 			var root = new PathBranch();
 			foreach (var rb in RouteBuilder.AllChildren)
 			{
-				var options = rb.Options;
+				var options = rb.RouteOptions;
 				options.Defaults.TryGetValue("action", out var action);
 				if (options.ClassHandler == null && options.ActionHandler == null || options.Methods == null)
 					continue;

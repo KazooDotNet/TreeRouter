@@ -8,9 +8,9 @@ namespace TreeRouter
 		
 		public ResourceBuilder(string prefix, RouteOptions options) 
 		{
-			Options = Utils.MergeOptions(options, new RouteOptions { ClassHandler = typeof(T) });
-			Options.Path = Utils.JoinPath(options.Path, prefix);
-			_rb = new RouteBuilder(Options);
+			RouteOptions = Utils.MergeOptions(options, new RouteOptions { ClassHandler = typeof(T) });
+			RouteOptions.Path = Utils.JoinPath(options.Path, prefix);
+			_rb = new RouteBuilder(RouteOptions);
 			Children.Add(_rb);
 			_rb.Get("/").Action("Show");
 			_rb.Post("/").Action("Create");
@@ -18,6 +18,9 @@ namespace TreeRouter
 			_rb.Get("/edit").Action("Edit");
 			_rb.Path("/").Methods("put", "patch").Action("Update");
 			_rb.Delete("/").Action("Delete");
+			_rb.Options("/").Action("Options");
+			_rb.Options("/new").Action("Options");
+			_rb.Options("/edit").Action("Options");
 		}
 		
 		public ResourceBuilder<T> OnCollection(Action<RouteBuilder> map)

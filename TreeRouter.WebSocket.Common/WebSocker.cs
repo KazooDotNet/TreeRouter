@@ -2,19 +2,22 @@
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace TreeRouter.WebSocket
 {
-  // This class exists so that we can assign IDs to websockets
+  // This class exists so that we can assign IDs and HTTP contexts to websockets
   public class WebSocker : System.Net.WebSockets.WebSocket
   {
     private System.Net.WebSockets.WebSocket Socket { get; }
-    public string Id { get; private set; }
+    public string Id { get; }
+    public HttpContext HttpContext { get; }
 
-    public WebSocker(System.Net.WebSockets.WebSocket socket, string id = null)
+    public WebSocker(System.Net.WebSockets.WebSocket socket, HttpContext context, string id = null)
     {
       Socket = socket;
       Id = id ?? Guid.NewGuid().ToString();
+      HttpContext = context;
     }
 
     public override WebSocketCloseStatus? CloseStatus => Socket.CloseStatus;

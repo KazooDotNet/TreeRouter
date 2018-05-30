@@ -9,7 +9,7 @@
   <PropertyGroup>
     <PackageId>TreeRouter.WebSocket.Common</PackageId>
     <Title>Websockets with Tree Router</Title>
-    <VersionPrefix>0.9.3</VersionPrefix>
+    <VersionPrefix>0.9.5</VersionPrefix>
     <VersionSuffix />
     <PackageProjectUrl>https://github.com/AccentuateMe/TreeRouter</PackageProjectUrl>
     <Description>WebSockets with TreeRouter convenience</Description>

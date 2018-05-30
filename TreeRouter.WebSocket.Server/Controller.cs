@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,9 +13,10 @@ namespace TreeRouter.WebSocket
 		protected HandlerMessage Context;
 		protected MessageRequest Request => Context.Request;
 		protected IHandler Handler => Context.Handler;
+		protected WebSocker Socket => Context.Socket;
 
 		protected Task ReplyMessage(MessageResponse message, CancellationToken token = default(CancellationToken)) =>
-			SendMessage(Context.Socket, message, token);
+			SendMessage(Socket, message, token);
 
 		protected Task SendMessage(WebSocker socket, MessageResponse message, CancellationToken token) =>
 			Handler.SendMessage(socket, message, token);
@@ -25,7 +27,7 @@ namespace TreeRouter.WebSocket
 		protected Task SendMessageToAll(MessageResponse message, CancellationToken token) =>
 			Handler.SendMessageToAll(message, token);
 
-		public async Task Route(Request routerRequest)
+		public virtual async Task Route(Request routerRequest)
 		{
 			RouteVars = routerRequest.RouteVars;
 			if (!RouteVars.ContainsKey("action"))
@@ -39,7 +41,7 @@ namespace TreeRouter.WebSocket
 			await Dispatch((HandlerMessage) routerRequest.Context, method);
 		}
 
-		protected async Task Dispatch(HandlerMessage context, MethodInfo method, params object[] list)
+		protected virtual async Task Dispatch(HandlerMessage context, MethodInfo method, params object[] list)
 		{
 			Context = context;
 

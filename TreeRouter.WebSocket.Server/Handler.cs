@@ -22,7 +22,7 @@ namespace TreeRouter.WebSocket
 
 	public class Handler : IHandler
 	{
-	  protected ConnectionManager ConnectionManager { get; }
+		protected ConnectionManager ConnectionManager { get; }
 		public IRouter Router { protected get; set; }
 
 		public Handler(ConnectionManager connectionManager)
@@ -30,16 +30,20 @@ namespace TreeRouter.WebSocket
 			ConnectionManager = connectionManager;
 		}
 
-		public virtual Task OnConnected(WebSocker socket) =>
-			SendMessage(socket, new MessageResponse
-			{
-				MessageType = MessageType.ConnectionEvent,
-				Data = new MessageData {["SocketId"] = socket.Id}
-			});
-		
+		public virtual Task OnConnected(WebSocker socket) {
+			ConnectionManager.AddSocket(socket);
+			return SendMessage(socket, new MessageResponse
+            {
+                MessageType = MessageType.ConnectionEvent,
+                Data = new MessageData { ["SocketId"] = socket.Id }
+            });
+		}
 
 		public virtual Task OnDisconnected(WebSocker socket) =>
 			ConnectionManager.RemoveSocket(socket.Id);
+
+		public virtual Task<bool> SocketExists(string id) =>
+			Task.FromResult(ConnectionManager.SocketExists(id));
 
 	  public Task SendMessage(string socketId, MessageResponse message, CancellationToken token = default(CancellationToken))
 		{

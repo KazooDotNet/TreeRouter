@@ -15,8 +15,8 @@ namespace TreeRouter
 
 		public RouteBuilder Map(RouteOptions options, Action<RouteBuilder> map)
 		{
-			var opts = Utils.MergeOptions(Options, options);
-			var rb = new RouteBuilder(opts) { Options = { Path = Utils.JoinPath(Options.Path, options.Path) } };
+			var opts = Utils.MergeOptions(RouteOptions, options);
+			var rb = new RouteBuilder(opts) { RouteOptions = { Path = Utils.JoinPath(RouteOptions.Path, options.Path) } };
 			Children.Add(rb);
 			map.Invoke(rb);
 			return rb;
@@ -52,29 +52,31 @@ namespace TreeRouter
 		public MethodBuilder Patch<T>(string path) where T : IController => NewBuilder(path, "patch", typeof(T));
 		public MethodBuilder Delete(string path) => NewBuilder(path, "delete");
 		public MethodBuilder Delete<T>(string path) where T : IController => NewBuilder(path, "delete", typeof(T));
+		public MethodBuilder Options(string path) => NewBuilder(path, "options");
+		public MethodBuilder Options<T>(string path) where T : IController => NewBuilder(path, "options", typeof(T));
 		
 		protected MethodBuilder NewBuilder(string path, string method, Type handler = null)
 		{
-			var mb = new MethodBuilder(Options)
+			var mb = new MethodBuilder(RouteOptions)
 			{
-				Options = { Path = Utils.JoinPath(Options.Path, path), Methods = new[] {method} }
+				RouteOptions = { Path = Utils.JoinPath(RouteOptions.Path, path), Methods = new[] {method} }
 			};
 			if (handler != null)
-				mb.Options.ClassHandler = handler;
+				mb.RouteOptions.ClassHandler = handler;
 			Children.Add(mb);
 			return mb;
 		}
 
 		public ResourcesBuilder<T> Resources<T>(string path) where T : IController
 		{
-			var rb = new ResourcesBuilder<T>(path, Options);
+			var rb = new ResourcesBuilder<T>(path, RouteOptions);
 			Children.Add(rb);
 			return rb;
 		}
 
 		public ResourceBuilder<T> Resource<T>(string path) where T : IController
 		{
-			var rb = new ResourceBuilder<T>(path, Options);
+			var rb = new ResourceBuilder<T>(path, RouteOptions);
 			Children.Add(rb);
 			return rb;
 		}

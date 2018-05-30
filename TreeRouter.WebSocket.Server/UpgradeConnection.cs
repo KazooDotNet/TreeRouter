@@ -38,7 +38,7 @@ namespace TreeRouter.WebSocket
         ? context.WebSockets.AcceptWebSocketAsync()
         : context.WebSockets.AcceptWebSocketAsync(selectedProtocol));
 
-      var socker = new WebSocker(socket);
+      var socker = new WebSocker(socket, context);
 
       await Handler.OnConnected(socker);
 

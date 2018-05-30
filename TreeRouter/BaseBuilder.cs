@@ -5,18 +5,18 @@ namespace TreeRouter
 	public class BaseBuilder
 	{
 
-		public RouteOptions Options { get; protected set; }
+		public RouteOptions RouteOptions { get; protected set; }
 		protected List<BaseBuilder> Children { get; }
 
 		protected BaseBuilder()
 		{
-			Options = new RouteOptions();
+			RouteOptions = new RouteOptions();
 			Children = new List<BaseBuilder>();
 		}
 
 		protected BaseBuilder(RouteOptions options)
 		{
-			Options = Utils.MergeOptions(options);
+			RouteOptions = Utils.MergeOptions(options);
 			Children = new List<BaseBuilder>();
 		}
 

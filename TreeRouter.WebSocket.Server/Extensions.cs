@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,7 +10,12 @@ namespace TreeRouter.WebSocket
 	public static class Extensions
 	{
 		public static IServiceCollection AddWebSockets(this IServiceCollection services) =>
-			services.AddWebSockets(new[] {Assembly.GetEntryAssembly(), Assembly.GetExecutingAssembly()});
+			services.AddWebSockets(new[]
+			{
+				Assembly.GetEntryAssembly(), 
+				Assembly.GetExecutingAssembly(),
+				Assembly.GetCallingAssembly()
+			});
 
 		public static IServiceCollection AddWebSockets(this IServiceCollection services, IEnumerable<Assembly> assemblies)
 		{
