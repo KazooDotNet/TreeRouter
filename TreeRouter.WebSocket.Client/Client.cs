@@ -12,7 +12,8 @@ namespace TreeRouter.WebSocket
 {
 	public class Client : IDisposable
     {
-        protected readonly ClientWebSocket Socket;
+        protected ClientWebSocket Socket;
+        protected string[] Subprotocols;
         readonly string _uri;
         protected CancellationTokenSource TokenSource;
         protected readonly IClock Clock; 
@@ -25,26 +26,32 @@ namespace TreeRouter.WebSocket
         public Client(string uri, string[] subprotocols = null, IClock clock = null)
         {
             Clock = clock ?? new RealClock();
-            Socket = new ClientWebSocket();
-            if (subprotocols != null)
-                foreach (var sp in subprotocols)
-                    Socket.Options.AddSubProtocol(sp);
+            Subprotocols = subprotocols;
             _uri = uri;
             Listeners = new ConcurrentDictionary<string, MessageCallback?>();
             Watchers = new ConcurrentDictionary<string, List<Func<MessageResponse, bool?>>>();
         }
 
-        public void Start() => StartAsync().GetAwaiter().GetResult();
+        public void Start(Action<ClientWebSocket> callback = null) => StartAsync(callback).GetAwaiter().GetResult();
 
-        public async Task StartAsync()
+        public async Task StartAsync(Action<ClientWebSocket> callback = null)
         {
             if (Open) return;
+            Socket = new ClientWebSocket();
+            if (Subprotocols != null)
+                foreach (var sp in Subprotocols)
+                    Socket.Options.AddSubProtocol(sp);
+            if (callback != null)
+                callback.Invoke(Socket);
             TokenSource = new CancellationTokenSource();
             var token = TokenSource.Token;
             await Socket.ConnectAsync(new Uri(_uri), token);
-            Open = true;
-			ReceiveAsync(token);
-            Sweep(token);
+            Open = Socket.State == WebSocketState.Open;
+            if (Open)
+            {
+                ReceiveAsync(token);
+                Sweep(token);
+            }
         }
 
         public void Stop(bool graceful = true) => StopAsync(graceful).GetAwaiter().GetResult();
@@ -119,13 +126,22 @@ namespace TreeRouter.WebSocket
             var buffer = new byte[1024 * 4];
             var done = false;
             while(!done)
-            {
-                if (token.IsCancellationRequested) break;
-                var result = await Socket.ReceiveAsync(new ArraySegment<byte>(buffer),
-                                                       token).ConfigureAwait(false);
+            {   
+                WebSocketReceiveResult result = null;
+                try
+                {
+                    result = await Socket.ReceiveAsync(new ArraySegment<byte>(buffer), token).ConfigureAwait(false);
+                }
+                catch (WebSocketException) {
+                    await StopAsync(graceful: false).ConfigureAwait(false);
+                    break;
+                }
+                catch (InvalidOperationException) { break; }
+                catch (TaskCanceledException) { break; }
+                catch (OperationCanceledException) { break; }
                 MessageResponse message = null;
                 // TODO: make serializers more modular
-                switch(result.MessageType)
+                switch(result?.MessageType)
                 {
                     case WebSocketMessageType.Text:
                         var str = Encoding.UTF8.GetString(buffer, 0, result.Count);
@@ -138,6 +154,9 @@ namespace TreeRouter.WebSocket
                     case WebSocketMessageType.Binary:
                         // TODO implement binary protocols
                         break;
+                    case null:
+                        // do nothing;
+                        break;
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
@@ -146,7 +165,7 @@ namespace TreeRouter.WebSocket
                 
                 MessageReceived?.Invoke(this, new MessageEventArgs { Message = message });
                 
-                if (Watchers.ContainsKey(message.Path))
+                if (message.Path != null && Watchers.ContainsKey(message.Path))
                     lock (Watchers[message.Path])
                     {
                         var removeThese = new List<int>();
