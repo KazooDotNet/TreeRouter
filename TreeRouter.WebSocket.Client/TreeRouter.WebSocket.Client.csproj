@@ -11,7 +11,7 @@
   <PropertyGroup>
     <PackageId>TreeRouter.WebSocket.Client</PackageId>
     <Title>Websockets with Tree Router</Title>
-    <VersionPrefix>0.9.3</VersionPrefix>
+    <VersionPrefix>0.9.4</VersionPrefix>
     <VersionSuffix />
     <PackageProjectUrl>https://github.com/AccentuateMe/TreeRouter</PackageProjectUrl>
     <Description>WebSockets with TreeRouter convenience</Description>
