@@ -46,7 +46,7 @@ namespace Tests
 		{
 			_router.Map(r =>
 			{
-				r.Get("/{*page}").NullAction();
+				r.Get("/{page*}").NullAction();
 				r.Get("/stuff/{var1}/otherStuff").NullAction();
 				r.Get("/stuff/{var2}/things").NullAction();
 				r.Get("/stuff/{var3}/foos").NullAction();

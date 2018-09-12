@@ -38,6 +38,8 @@ namespace TreeRouter.Http
 			Action<RouteBuilder> action)
 		{
 			var router = builder.ApplicationServices.GetService<IRouter>();
+			if (router == null)
+				throw new ArgumentException("Router not set. Have you set up the service by calling `AddTreeMap()` on IServiceCollection?");
 			router.Map(prefix, action);
 			builder.UseMiddleware<Middleware>(router);
 			return builder;

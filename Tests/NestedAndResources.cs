@@ -102,7 +102,7 @@ namespace Tests
 				{
 					rc.Get("/test").Action("Show");
 					rc.Get("/another").Action("Show");
-					rc.Get("/{*blah}").Action("Show");
+					rc.Get("/{blah*}").Action("Show");
 				}); 
 			});
 			var result = _router.MatchPath("/test", "get");
