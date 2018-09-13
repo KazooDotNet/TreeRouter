@@ -57,15 +57,17 @@ namespace TreeRouter
 			return merged;
 		}
 		
-		public static async Task<T> ExtractRefTask<T>(object obj) where T : class
+		public static async Task<object> ExtractRefTask(object obj)
 		{
 			try
 			{
 				switch (obj)
 				{
-					case Task<T> objTask: return await objTask;
-					case Task task:  await task; return null;
-					default: return (T) obj;
+					case Task task:
+						await task;
+						return task.GetType().GetProperty("Result")?.GetValue(task);
+					default: 
+						return obj;
 				}	
 			}
 			catch (AggregateException e)

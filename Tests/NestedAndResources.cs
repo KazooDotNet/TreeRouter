@@ -64,14 +64,14 @@ namespace Tests
 					{
 						mem.Get("/stuff").NullAction();
 						mem.Resources<ResourcesController>("widgies");
-					});
+					}, "thing");
 			});
 			var result = _router.MatchPath("/things/1/stuff", "get");
 			Assert.True(result.Found);
-			Assert.Equal("1", result.Vars["resource_id"]);
+			Assert.Equal("1", result.Vars["thingId"]);
 			result = _router.MatchPath("/things/1/widgies/2", "get");
 			Assert.True(result.Found);
-			Assert.Equal("1", result.Vars["resource_id"]);
+			Assert.Equal("1", result.Vars["thingId"]);
 			Assert.Equal("2", result.Vars["id"]);
 		}
 

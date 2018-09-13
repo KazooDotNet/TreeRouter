@@ -1,5 +1,4 @@
 ﻿using System;
-using Humanizer;
 
 namespace TreeRouter
 {
@@ -27,11 +26,10 @@ namespace TreeRouter
 			_rb.Options("/{id}/edit").Action("Options");
 		} 
 		
-		public ResourcesBuilder<T> OnMember(Action<RouteBuilder> map, string pathName = null)
+		public ResourcesBuilder<T> OnMember(Action<RouteBuilder> map, string pathName)
 		{
-			var name = pathName ?? typeof(T).Name.Replace("Controller", "").Singularize().Underscore();
 			var options = Utils.MergeOptions(RouteOptions);
-			options.Path = Utils.JoinPath(options.Path, $"{{{name}_id}}");
+			options.Path = Utils.JoinPath(options.Path, $"{{{pathName}Id}}");
 			var rb = new RouteBuilder(options);
 			map.Invoke(rb);
 			Children.Add(rb);

@@ -4,13 +4,12 @@
     <LangVersion>7.1</LangVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Humanizer.Core" Version="2.2.0" />
     <PackageReference Include="MessagePack" Version="1.7.3.4" />
   </ItemGroup>
   <PropertyGroup>
     <PackageId>TreeRouter</PackageId>
     <Title>Tree Router</Title>
-    <VersionPrefix>0.9.4</VersionPrefix>
+    <VersionPrefix>0.9.5</VersionPrefix>
     <VersionSuffix />
     <PackageProjectUrl>https://github.com/AccentuateMe/TreeRouter</PackageProjectUrl>
     <Description>A router which maps out path nodes to reduce the number of routes to match, increasing speed.</Description>
