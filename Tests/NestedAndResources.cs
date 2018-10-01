@@ -63,16 +63,21 @@ namespace Tests
 					.OnMember(mem =>
 					{
 						mem.Get("/stuff").NullAction();
+						mem.Patch("/test").Action("test");
 						mem.Resources<ResourcesController>("widgies");
 					}, "thing");
 			});
 			var result = _router.MatchPath("/things/1/stuff", "get");
 			Assert.True(result.Found);
 			Assert.Equal("1", result.Vars["thingId"]);
+			result = _router.MatchPath("/things/1/test", "patch");
+			Assert.True(result.Found);
+			Assert.Equal("1", result.Vars["thingId"]);
 			result = _router.MatchPath("/things/1/widgies/2", "get");
 			Assert.True(result.Found);
 			Assert.Equal("1", result.Vars["thingId"]);
 			Assert.Equal("2", result.Vars["id"]);
+			
 		}
 
 		[Fact]

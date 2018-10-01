@@ -9,7 +9,7 @@
   <PropertyGroup>
     <PackageId>TreeRouter</PackageId>
     <Title>Tree Router</Title>
-    <VersionPrefix>0.9.5</VersionPrefix>
+    <VersionPrefix>0.9.5.1</VersionPrefix>
     <VersionSuffix />
     <PackageProjectUrl>https://github.com/AccentuateMe/TreeRouter</PackageProjectUrl>
     <Description>A router which maps out path nodes to reduce the number of routes to match, increasing speed.</Description>

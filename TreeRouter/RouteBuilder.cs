@@ -61,8 +61,7 @@ namespace TreeRouter
 			{
 				RouteOptions = { Path = Utils.JoinPath(RouteOptions.Path, path), Methods = new[] {method} }
 			};
-			if (handler != null)
-				mb.RouteOptions.ClassHandler = handler;
+			mb.RouteOptions.ClassHandler = handler ?? RouteOptions.ClassHandler;
 			Children.Add(mb);
 			return mb;
 		}
