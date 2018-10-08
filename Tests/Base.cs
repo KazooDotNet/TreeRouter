@@ -16,13 +16,16 @@ namespace Tests
 	public class Base
 	{
 		protected Router _router;
+		private IServiceProvider _services;
 
 		protected Base()
 		{
 			var services = new ServiceCollection();
 			services.AddTransient<EchoController>();
 			services.AddTransient<ResourcesController>();
-			_router = new Router(new ServiceContainer(services.BuildServiceProvider()));
+			_router = new Router();
+			services.AddSingleton<IRouter>(_router);
+			_services = services.BuildServiceProvider();
 		}
 		
 		protected static HttpContext MakeContext(string path, string method)
@@ -46,8 +49,8 @@ namespace Tests
 		{
 			try
 			{
-				var task = new Task( () => _router.Dispatch(context) );
-				task.RunSynchronously();
+				var middleware = new TreeRouter.Http.Middleware(null, _router, _services.GetService<IServiceScopeFactory>());
+				middleware.Invoke(context).Wait();
 			}
 			catch (AggregateException e)
 			{

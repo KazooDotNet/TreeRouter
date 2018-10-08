@@ -5,6 +5,7 @@ using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using TreeRouter.Errors;
 
@@ -22,12 +23,14 @@ namespace TreeRouter.WebSocket
 
 	public class Handler : IHandler
 	{
+		private IServiceScopeFactory _scopeFactory;
 		protected ConnectionManager ConnectionManager { get; }
 		public IRouter Router { protected get; set; }
 
-		public Handler(ConnectionManager connectionManager)
+		public Handler(ConnectionManager connectionManager, IServiceScopeFactory scopeFactory)
 		{
 			ConnectionManager = connectionManager;
+			_scopeFactory = scopeFactory;
 		}
 
 		public virtual Task OnConnected(WebSocker socket) {
@@ -119,7 +122,11 @@ namespace TreeRouter.WebSocket
 		  
 		  try
 		  {
-			  return Router.Dispatch(message.Path, message.Method, hm);
+			  using (var scope = _scopeFactory.CreateScope())
+			  {
+				  return Router.Dispatch(message.Path, message.Method, hm, scope);  
+			  }
+			  
 		  }
 		  catch (Exception e)
 		  {

@@ -48,7 +48,7 @@ namespace TreeRouter.Http
 		public static IApplicationBuilder TreeMap(this IApplicationBuilder builder, Action<RouteBuilder> action)
 			=> TreeMap(builder, null, action);
 		
-		public static Task Dispatch(this IRouter router, HttpContext context)
+		public static Task Dispatch(this IRouter router, HttpContext context, IServiceScope scope)
 		{
 			var req = context.Request;
 			var path = req.PathBase == null ? 
@@ -57,7 +57,7 @@ namespace TreeRouter.Http
 			var contentType = context.Request.ContentType ?? "";
 			if (method == "post" && contentType.Contains("form") && context.Request.Form.ContainsKey("_method"))
 				method = context.Request.Form["_method"];
-			return router.Dispatch(path, method, context);
+			return router.Dispatch(path, method, context, scope);
 		}
 		
 	}

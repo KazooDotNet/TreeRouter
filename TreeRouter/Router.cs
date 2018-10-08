@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.Design;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace TreeRouter
 {
@@ -12,19 +12,14 @@ namespace TreeRouter
 		void Compile();
 		void Map(string prefix, Action<RouteBuilder> action);
 		void Map(Action<RouteBuilder> action);
-		Task Dispatch(string path, string method, object context);
+		Task Dispatch(string path, string method, object context, IServiceScope container);
+		IEnumerable<Route> AllRoutes();
 	}
 	
 	public class Router : IRouter
 	{
 		private RouteBuilder RouteBuilder { get; set; }
 		private PathBranch Root { get; set; }
-		private readonly IServiceProvider _container;
-		
-		public Router(IServiceProvider container)
-		{
-			_container = container ?? new ServiceContainer();
-		}
 
 		public void Compile()
 		{
@@ -112,7 +107,7 @@ namespace TreeRouter
 			return result;
 		}
 		
-		public Task Dispatch(string path, string method, object context)
+		public Task Dispatch(string path, string method, object context, IServiceScope container)
 		{
 			if (string.IsNullOrWhiteSpace(method))
 				return Task.FromException(new Errors.RouteNotFound("Method parameter is blank. No routes will match")
@@ -139,8 +134,7 @@ namespace TreeRouter
 					Path = path,
 					Method = method
 				});
-
-			if (!(_container.GetService(result.Route.ClassHandler) is IController controller))
+			if (!(container.ServiceProvider.GetService(result.Route.ClassHandler) is IController controller))
 				return Task.FromException(new Errors.UnregisteredController("Service container does not have controller registered")
 					{ControllerType = result.Route.ClassHandler});
 				
@@ -148,6 +142,24 @@ namespace TreeRouter
 			return controller.Route(request);
 
 		}
+
+		public IEnumerable<Route> AllRoutes()
+		{
+			var list = new List<Route>();
+			AllRoutes(Root, list);
+			return list;
+		}
+
+		private static void AllRoutes(PathBranch branch, List<Route> routes)
+		{
+			if (branch.Routes != null)
+				foreach (var route in branch.Routes)
+					if (route.ClassHandler != null || route.ActionHandler != null)
+						routes.Add(route);
+			foreach (var branchChild in branch.Children)
+				AllRoutes(branchChild, routes);
+		}
+		
 
 		private static List<RouteResult> BranchSearch(PathBranch branch, string method, IReadOnlyList<string> pathTokens)
 		{

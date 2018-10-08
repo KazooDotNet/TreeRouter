@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace TreeRouter.Http
 {
@@ -9,23 +10,29 @@ namespace TreeRouter.Http
 
 		private readonly IRouter _router;
 		private readonly RequestDelegate _next;
-		
-		public Middleware(RequestDelegate next, IRouter router)
+		private IServiceScopeFactory _scopeFactory;
+
+		public Middleware(RequestDelegate next, IRouter router, IServiceScopeFactory scopeFactory)
 		{
 			_router = router;
 			_next = next;
+			_scopeFactory = scopeFactory;
 		}
 
-		public Task Invoke(HttpContext context)
+		public async Task Invoke(HttpContext context)
 		{
 			try
 			{
-				return _router.Dispatch(context);
+				using (var scope = _scopeFactory.CreateScope())
+				{
+					await _router.Dispatch(context, scope);	
+				}
 			}
 			catch (Errors.RouteNotFound e)
 			{
 				Console.WriteLine(e);
-				return _next?.Invoke(context) ?? Task.FromException(e);
+				if (_next == null) throw;
+				await _next.Invoke(context);
 			}
 		}
 	}

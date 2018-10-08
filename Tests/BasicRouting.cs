@@ -1,3 +1,4 @@
+using System.Linq;
 using TreeRouter;
 using Xunit;
 
@@ -10,7 +11,7 @@ namespace Tests
 		
 		public BasicRouting()
 		{
-			_router = new Router(null);
+			_router = new Router();
 		}
 		
 		[Fact]
@@ -129,6 +130,13 @@ namespace Tests
 			Assert.True(result.Found);
 			Assert.NotNull(result.Route);
 			Assert.Equal("3", result.Vars["things"]);
+		}
+
+		[Fact]
+		public void ReturnsList()
+		{
+			_router.Map(r => { r.Get("/stuff").NullAction(); });
+			Assert.Equal(_router.AllRoutes().Count(), 1);
 		}
 		
 	}

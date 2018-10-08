@@ -10,7 +10,7 @@ namespace Tests
 		[Fact]
 		public void DispatchesAction()
 		{
-			var responseText = "Hi there!";
+			const string responseText = "Hi there!";
 			_router.Map( r => r.Get("/echo/")
 				.Action( async req =>
 				{
@@ -24,7 +24,7 @@ namespace Tests
 		[Fact]
 		public void DispatchesController()
 		{
-			var responseText = "aaaaaaa";
+			const string responseText = "aaaaaaa";
 			_router.Map( r => r.Get<EchoController>("/echo/{ responseText }"));
 			var context = MakeContext("/echo/" + responseText, "get");
 			Assert.Equal(responseText, DispatchAndRead(context));
