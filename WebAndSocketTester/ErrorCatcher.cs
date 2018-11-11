@@ -21,7 +21,7 @@ namespace WebAndSocketTester
 		{
 			try
 			{
-				_next.Invoke(context);
+				await _next.Invoke(context);
 			}
 			catch (Exception e)
 			{

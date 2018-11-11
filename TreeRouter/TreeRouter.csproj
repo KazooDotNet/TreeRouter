@@ -5,16 +5,12 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="MessagePack" Version="1.7.3.4" />
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions, Version=2.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60">
-      <HintPath>..\..\..\..\Users\eltiare\.nuget\packages\microsoft.extensions.dependencyinjection.abstractions\2.0.0\lib\netstandard2.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
-    </Reference>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="2.0.0" />
   </ItemGroup>
   <PropertyGroup>
     <PackageId>TreeRouter</PackageId>
     <Title>Tree Router</Title>
-    <VersionPrefix>0.9.5.3</VersionPrefix>
+    <VersionPrefix>0.9.5.4</VersionPrefix>
     <VersionSuffix />
     <PackageProjectUrl>https://github.com/AccentuateMe/TreeRouter</PackageProjectUrl>
     <Description>A router which maps out path nodes to reduce the number of routes to match, increasing speed.</Description>

@@ -6,26 +6,21 @@ using Microsoft.Extensions.DependencyInjection;
 namespace TreeRouter.Http
 {
 	public class Middleware
-	{
-
-		private readonly IRouter _router;
+	{	
 		private readonly RequestDelegate _next;
-		private IServiceScopeFactory _scopeFactory;
-
-		public Middleware(RequestDelegate next, IRouter router, IServiceScopeFactory scopeFactory)
-		{
-			_router = router;
+		
+		public Middleware(RequestDelegate next)
+		{	
 			_next = next;
-			_scopeFactory = scopeFactory;
 		}
 
-		public async Task Invoke(HttpContext context)
+		public async Task Invoke(HttpContext context, IRouter router, IServiceScopeFactory scopeFactory)
 		{
 			try
 			{
-				using (var scope = _scopeFactory.CreateScope())
+				using (var scope = scopeFactory.CreateScope())
 				{
-					await _router.Dispatch(context, scope);	
+					await router.Dispatch(context, scope);	
 				}
 			}
 			catch (Errors.RouteNotFound e)

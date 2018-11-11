@@ -49,8 +49,8 @@ namespace Tests
 		{
 			try
 			{
-				var middleware = new TreeRouter.Http.Middleware(null, _router, _services.GetService<IServiceScopeFactory>());
-				middleware.Invoke(context).Wait();
+				var middleware = new TreeRouter.Http.Middleware(null);
+				middleware.Invoke(context, _router, _services.GetService<IServiceScopeFactory>()).Wait();
 			}
 			catch (AggregateException e)
 			{

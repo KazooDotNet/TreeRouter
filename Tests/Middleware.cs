@@ -25,11 +25,13 @@ namespace Tests
 		{
 			// TODO: test router scopes better
 			var middleware = ActivatorUtilities.CreateInstance<TreeRouter.Http.Middleware>(_provider, GenerateNext("something"));
-			middleware.Invoke(new DefaultHttpContext());
+			var router = _provider.GetService<IRouter>();
+			var factory = _provider.GetService<IServiceScopeFactory>();
+			middleware.Invoke(new DefaultHttpContext(), router, factory).Wait();
 			var service = _provider.GetService<SimpleService>();
 			Assert.Null(service.Value);
 			var nonscoped = new NonscopedMiddleware(GenerateNext("somethingelse"));
-			nonscoped.Invoke(new DefaultHttpContext());
+			nonscoped.Invoke(new DefaultHttpContext()).Wait();
 			var service2 = _provider.GetService<SimpleService>();
 			Assert.Equal("somethingelse", service2.Value);
 		}
@@ -61,9 +63,9 @@ namespace Tests
 			_next = next;
 		}
 
-		public void Invoke(HttpContext context)
+		public async Task Invoke(HttpContext context)
 		{
-			_next.Invoke(context);
+			await _next.Invoke(context);
 		}
 		
 	}
