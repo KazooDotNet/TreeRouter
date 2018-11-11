@@ -3,7 +3,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.0.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.0.3" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TreeRouter\TreeRouter.csproj" />
@@ -11,7 +11,7 @@
   <PropertyGroup>
     <PackageId>TreeRouter.Http</PackageId>
     <Title>Tree Router - Http Adapter</Title>
-    <VersionPrefix>0.9.5.4</VersionPrefix>
+    <VersionPrefix>0.9.5.6</VersionPrefix>
     <VersionSuffix />
     <PackageProjectUrl>https://github.com/AccentuateMe/TreeRouter</PackageProjectUrl>
     <Description>TreeRouter for .NetCore apps</Description>

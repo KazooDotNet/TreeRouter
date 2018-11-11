@@ -3,6 +3,7 @@ using System.Dynamic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Tests.Controllers;
 using TreeRouter;
 using Xunit;
 
@@ -23,11 +24,12 @@ namespace Tests
 		[Fact]
 		public void KeepsScopeSeparate()
 		{
-			// TODO: test router scopes better
-			var middleware = ActivatorUtilities.CreateInstance<TreeRouter.Http.Middleware>(_provider, GenerateNext("something"));
 			var router = _provider.GetService<IRouter>();
-			var factory = _provider.GetService<IServiceScopeFactory>();
-			middleware.Invoke(new DefaultHttpContext(), router, factory).Wait();
+			router.Map( r => r.Get<ScopeController>("/test") );
+			var middleware = ActivatorUtilities.CreateInstance<TreeRouter.Http.Middleware>(_provider, router, _emptyNext);
+			var http = new DefaultHttpContext();
+			http.Request.Path = "/test";
+			middleware.Invoke(http, _provider.GetService<IServiceScopeFactory>()).Wait();
 			var service = _provider.GetService<SimpleService>();
 			Assert.Null(service.Value);
 			var nonscoped = new NonscopedMiddleware(GenerateNext("somethingelse"));
@@ -36,17 +38,16 @@ namespace Tests
 			Assert.Equal("somethingelse", service2.Value);
 		}
 
-		private RequestDelegate GenerateNext(string value)
+		private RequestDelegate _emptyNext => _ => Task.CompletedTask;
+
+		private RequestDelegate GenerateNext(string value) => context =>
 		{
-			Task Ret(HttpContext context)
-			{
-				var s = _provider.GetService<SimpleService>();
-				s.Value = value;
-				return Task.CompletedTask;
-			}
-			return Ret;
-		}
-		
+			var s = _provider.GetService<SimpleService>();
+			s.Value = value;
+			return Task.CompletedTask;
+		};
+
+
 	}
 
 	public class SimpleService

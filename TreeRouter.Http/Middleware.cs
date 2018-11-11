@@ -8,19 +8,21 @@ namespace TreeRouter.Http
 	public class Middleware
 	{	
 		private readonly RequestDelegate _next;
-		
-		public Middleware(RequestDelegate next)
+		private IRouter _router;
+
+		public Middleware(RequestDelegate next, IRouter router)
 		{	
 			_next = next;
+			_router = router;
 		}
 
-		public async Task Invoke(HttpContext context, IRouter router, IServiceScopeFactory scopeFactory)
+		public async Task Invoke(HttpContext context, IServiceScopeFactory scopeFactory)
 		{
 			try
 			{
 				using (var scope = scopeFactory.CreateScope())
 				{
-					await router.Dispatch(context, scope);	
+					await _router.Dispatch(context, scope);	
 				}
 			}
 			catch (Errors.RouteNotFound e)
