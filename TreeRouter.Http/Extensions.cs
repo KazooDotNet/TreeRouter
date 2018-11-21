@@ -12,26 +12,10 @@ namespace TreeRouter.Http
 	public static class Extensions
 	{
 		
-		public static IServiceCollection AddTreeMap(this IServiceCollection collection, IEnumerable<Assembly> assemblies)
-		{
-			// TODO: is this sufficient for use in multiple routers?
-			collection.AddTransient<IRouter, Router>();
-			var icType = typeof(IController);
-			foreach (var assembly in assemblies)
-			foreach (var type in assembly.ExportedTypes)
-				if (icType.IsAssignableFrom(type) && !type.IsAbstract && type != icType)
-					collection.AddTransient(type);
-			return collection;
-		}
-
-		public static IServiceCollection AddTreeMap(this IServiceCollection collection, Assembly assembly) =>
-			AddTreeMap(collection, new[] { assembly });
-
 		public static IServiceCollection AddTreeMap(this IServiceCollection collection)
 		{
-			var assemblies = Assembly.GetEntryAssembly().GetReferencedAssemblies().Select(Assembly.Load).ToList();
-			assemblies.Add(Assembly.GetEntryAssembly());
-			return AddTreeMap(collection, assemblies);
+			// TODO: is this sufficient for use in multiple routers?
+			return collection.AddTransient<IRouter, Router>();
 		}
 
 		public static IApplicationBuilder TreeMap(this IApplicationBuilder builder, string prefix, 
@@ -48,7 +32,7 @@ namespace TreeRouter.Http
 		public static IApplicationBuilder TreeMap(this IApplicationBuilder builder, Action<RouteBuilder> action)
 			=> TreeMap(builder, null, action);
 		
-		public static Task Dispatch(this IRouter router, HttpContext context, IServiceScope scope)
+		public static Task Dispatch(this IRouter router, HttpContext context)
 		{
 			var req = context.Request;
 			var path = req.PathBase == null ? 
@@ -57,7 +41,7 @@ namespace TreeRouter.Http
 			var contentType = context.Request.ContentType ?? "";
 			if (method == "post" && contentType.Contains("form") && context.Request.Form.ContainsKey("_method"))
 				method = context.Request.Form["_method"];
-			return router.Dispatch(path, method, context, scope);
+			return router.Dispatch(path, method, context, context.RequestServices);
 		}
 		
 	}

@@ -124,7 +124,7 @@ namespace TreeRouter.WebSocket
 		  {
 			  using (var scope = _scopeFactory.CreateScope())
 			  {
-				  return Router.Dispatch(message.Path, message.Method, hm, scope);  
+				  return Router.Dispatch(message.Path, message.Method, hm, scope.ServiceProvider);  
 			  }
 			  
 		  }
