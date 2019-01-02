@@ -1,9 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>7.1</LangVersion>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="MessagePack" Version="1.7.3.4" />
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Extensions" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="2.2.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TreeRouter\TreeRouter.csproj" />
@@ -11,7 +16,7 @@
   <PropertyGroup>
     <PackageId>TreeRouter.Http</PackageId>
     <Title>Tree Router - Http Adapter</Title>
-    <VersionPrefix>0.9.5.7</VersionPrefix>
+    <VersionPrefix>0.9.6</VersionPrefix>
     <VersionSuffix />
     <PackageProjectUrl>https://github.com/AccentuateMe/TreeRouter</PackageProjectUrl>
     <Description>TreeRouter for .NetCore apps</Description>
@@ -19,4 +24,5 @@
     <Copyright>Copyright 2018 Accentuate.Me LLC - MIT</Copyright>
     <IncludeSource>true</IncludeSource>
   </PropertyGroup>
+  <Import Project="..\Shared\Shared.projitems" Label="Shared" />
 </Project>

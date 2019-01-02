@@ -1,15 +1,12 @@
 ﻿using System;
-using System.ComponentModel.Design;
 using System.IO;
 using System.Linq;
 using System.Runtime.ExceptionServices;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Tests.Controllers;
 using TreeRouter;
-using TreeRouter.Http;
 
 namespace Tests
 {
