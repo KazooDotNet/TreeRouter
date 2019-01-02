@@ -11,6 +11,6 @@
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)EventEmitter.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)NestedDictionary.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)ObjectExtensions.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)GenericExtensions.cs" />
   </ItemGroup>
 </Project>

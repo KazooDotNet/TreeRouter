@@ -8,7 +8,7 @@ using Microsoft.Extensions.Primitives;
 
 namespace TreeRouter.Shared
 {
-	public static class ObjectExtensions
+	public static class GenericExtensions
 	{
 
 		public static Dictionary<string, object> ToDictionary(this object obj)
