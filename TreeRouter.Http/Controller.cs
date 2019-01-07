@@ -8,11 +8,9 @@ using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
-using TreeRouter;
 using TreeRouter.Shared;
-using HttpResponse = TreeRouter.Http.HttpResponse;
 
-namespace MaggieSotteroApi.Classes
+namespace TreeRouter.Http
 {
 	public class ControllerArgs
 	{
