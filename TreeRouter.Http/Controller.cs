@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
@@ -41,6 +42,7 @@ namespace TreeRouter.Http
 		public HttpRequest Request => Context.Request;
 		public Microsoft.AspNetCore.Http.HttpResponse Response => Context.Response;
 		public ISession Session => Context.Session;
+		public bool SessionAvailable => Context.Features.Get<ISessionFeature>() != null;
 		public RequestDictionary RouteVars { get; set; }
 
 		public NestedDictionary Query
@@ -149,8 +151,8 @@ namespace TreeRouter.Http
 				Response.ContentType = "text/html; charset=utf-8";
 
 			await AfterAction.Invoke(this);
-
-			if (Session.IsAvailable)
+			
+			if (SessionAvailable)
 				await Session.CommitAsync();
 
 			object finalResponse; 
