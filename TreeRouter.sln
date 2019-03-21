@@ -14,8 +14,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TreeRouter.WebSocket.Client
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TreeRouter.WebSocket.Common", "TreeRouter.WebSocket.Common\TreeRouter.WebSocket.Common.csproj", "{D8F008A3-7FBB-415B-9C68-FA891670405E}"
 EndProject
-Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Shared", "Shared\Shared.shproj", "{3DECACCC-7CCA-42EC-96D1-1F0824BC960E}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

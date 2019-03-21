@@ -8,7 +8,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Extensions" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="2.2.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TreeRouter\TreeRouter.csproj" />
@@ -16,13 +16,12 @@
   <PropertyGroup>
     <PackageId>TreeRouter.Http</PackageId>
     <Title>Tree Router - Http Adapter</Title>
-    <VersionPrefix>0.9.6.3</VersionPrefix>
+    <VersionPrefix>0.9.7.1</VersionPrefix>
     <VersionSuffix />
     <PackageProjectUrl>https://github.com/AccentuateMe/TreeRouter</PackageProjectUrl>
     <Description>TreeRouter for .NetCore apps</Description>
     <PackageTags>router;dotnet core;modular</PackageTags>
-    <Copyright>Copyright 2018 Accentuate.Me LLC - MIT</Copyright>
+    <Copyright>Copyright 2018-2019 Jeremy Nicoll - MIT</Copyright>
     <IncludeSource>true</IncludeSource>
   </PropertyGroup>
-  <Import Project="..\Shared\Shared.projitems" Label="Shared" />
 </Project>

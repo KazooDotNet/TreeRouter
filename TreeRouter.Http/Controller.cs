@@ -1,15 +1,12 @@
 using System;
 using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
+using KazooDotNet.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
-using TreeRouter.Shared;
 
 namespace TreeRouter.Http
 {
@@ -27,58 +24,44 @@ namespace TreeRouter.Http
 			new EventEmitter<Controller, ControllerArgs>();
 		public readonly EventEmitter<Controller> AfterAction = 
 			new EventEmitter<Controller>();
-		
-		private static readonly string[] _formTypes = {"application/x-www-form-urlencoded", "multipart/form-data"};
 
-		private NestedDictionary _form;
+        protected HttpContext Context { get; set; }
+        protected HttpRequest Request => Context.Request;
+        protected Microsoft.AspNetCore.Http.HttpResponse Response => Context.Response;
+        protected ISession Session => Context.Session;
+        protected bool SessionAvailable => Context.Features.Get<ISessionFeature>() != null;
+        protected RequestDictionary RouteVars { get; private set; }
 
-		private NestedDictionary _jsonRequest;
+        private NestedParams _nestedParams;
+        
+        protected bool IsForm => _nestedParams.IsForm;
+        protected bool IsJson => _nestedParams.IsJson;
+        protected NestedDictionary Form => _nestedParams.Form;
+        protected NestedDictionary Json => _nestedParams.Json;
+        protected NestedDictionary Query => _nestedParams.Query;
+        protected NestedDictionary Params => _nestedParams.Params;
 
-		private NestedDictionary _params;
-
-		private NestedDictionary _query;
-
-		public HttpContext Context { get; set; }
-		public HttpRequest Request => Context.Request;
-		public Microsoft.AspNetCore.Http.HttpResponse Response => Context.Response;
-		public ISession Session => Context.Session;
-		public bool SessionAvailable => Context.Features.Get<ISessionFeature>() != null;
-		public RequestDictionary RouteVars { get; set; }
-
-		public NestedDictionary Query
-		{
-			get
-			{
-				if (_query != null) return _query;
-				_query = new NestedDictionary();
-				foreach (var pair in Context.Request.Query)
-					_query.Set(pair.Key, pair.Value.ToString());
-				return _query;
-			}
-		}
-
-		public string RequestMethod
+        protected JsonSerializerSettings JsonSettings { get; set; } = new JsonSerializerSettings
+        {
+            ContractResolver = new CamelCasePropertyNamesContractResolver(),
+            PreserveReferencesHandling = PreserveReferencesHandling.None
+        };
+        
+        protected string RequestMethod
 		{
 			get
 			{
 				var method = Request.Method.ToLower();
-				if (method == "post" && IsForm &&
-				    Request.Form.ContainsKey("_method") &&
-				    !string.IsNullOrEmpty(Request.Form["_method"]))
+				if (method == "post" && IsForm && Form.ContainsKey("_method") &&
+				        !string.IsNullOrEmpty(Form["_method"].ToString()))
 					return Request.Form["_method"].ToString().ToLower();
 				return Request.Method.ToLower();
 			}
 		}
 
-		public bool IsForm => _formTypes.Contains(Request.ContentType?.ToLower());
-		public bool IsJson => Request.ContentType?.ToLower().Contains("json") ?? false;
-
-		public bool AcceptsJson => Request.Headers.ContainsKey("Accept") &&
+        protected bool AcceptsJson => Request.Headers.ContainsKey("Accept") &&
 		                              Request.Headers["Accept"].ToString().Contains("json");
-
-		public NestedDictionary Params => _params ?? MakeParams();
-		public NestedDictionary JsonRequest => _jsonRequest ?? (_jsonRequest = MakeJsonRequest());
-		public NestedDictionary Form => _form ?? ProcessForm();
+        
 
 		public async Task Route(Request routerRequest)
 		{
@@ -88,31 +71,32 @@ namespace TreeRouter.Http
 
 			var type = GetType();
 			var method = type.GetMethod(RouteVars["action"]);
+			// TODO: make this more catcheable
 			if (method == null)
 				throw new Exception($"`{RouteVars["action"]}` does not exist on `{type.Name}`");
-
 			await Dispatch((HttpContext) routerRequest.Context, method);
-		}
-
-		private NestedDictionary MakeParams()
-		{
-			// Last one gets precedence
-			var dicts = new[] {Query, Form, JsonRequest};
-			_params = new NestedDictionary();
-			foreach (var dict in dicts)
-			foreach (var pair in dict)
-				_params[pair.Key] = pair.Value;
-			foreach (var pair in RouteVars)
-				_params[pair.Key] = pair.Value;
-			return _params;
 		}
 
 		protected async Task Dispatch(HttpContext context, MethodInfo method, params object[] list)
 		{
 			Context = context;
+            if (Context.Items.ContainsKey("nestedParams") && Context.Items["nestedParams"] is NestedParams np)
+                _nestedParams = np;
+            else
+                _nestedParams = new NestedParams(Context);
+
+            if (_nestedParams.IsForm && !_nestedParams.FormProcessed)
+                await _nestedParams.ProcessForm();
+
+            if (RouteVars != null)
+            {
+                if (_nestedParams.ExtraParams == null)
+                    _nestedParams.ExtraParams = new NestedDictionary();
+                foreach (var pair in RouteVars)
+                    _nestedParams.ExtraParams.Set(pair.Key, pair.Value);
+            }
+            
 			await BeforeDispatch.Invoke(this);
-			
-			var type = GetType();
 			
 			var ca = new ControllerArgs();
 			await BeforeAction.Invoke(this, ca);
@@ -193,90 +177,9 @@ namespace TreeRouter.Http
 			}
 		}
 
-		private NestedDictionary MakeJsonRequest()
-		{
-			var resp = new NestedDictionary();
-			if (!IsJson) return resp;
-			try
-			{
-				return LoopObject(resp, JsonConvert.DeserializeObject<JObject>(JsonString(), JsonSettings()));
-			}
-			catch (Exception e)
-			{
-				Console.WriteLine(e);
-				return resp;
-			}
-		}
-
-		private NestedDictionary LoopObject(NestedDictionary dict, JObject obj)
-		{
-			if (obj == null)
-				return dict;
-			foreach (var pair in obj)
-				switch (pair.Value)
-				{
-					case JArray arr:
-						if (arr.FirstOrDefault() is JObject)
-						{
-							var subArray = new NestedDictionary[arr.Count];
-							for (var i = 0; i < arr.Count; i++)
-							{
-								var subDict = new NestedDictionary();
-								subArray[i] = subDict;
-								LoopObject(subDict, arr[i] as JObject);
-							}
-
-							dict.Set(pair.Key, subArray);
-						}
-						else
-						{
-							dict.Set(pair.Key, arr.Select(Convert.ToString).ToArray());
-						}
-
-						break;
-					case JObject newObj:
-						var newDict = new NestedDictionary();
-						dict.Set(pair.Key, newDict);
-						LoopObject(newDict, newObj);
-						break;
-					default:
-						dict.Set(pair.Key, pair.Value.ToString());
-						break;
-				}
-			return dict;
-		}
-
-		private string JsonString()
-		{
-			if (!IsJson)
-				throw new ArgumentException($"Invalid request type for json: {Request.ContentType}");
-			using (var reader = new StreamReader(Request.Body, Encoding.UTF8, true, 1024, true))
-			{
-				return reader.ReadToEnd();
-			}
-		}
-
 		protected Task Dispatch(HttpContext context, string methodName, params object[] vars)
 		{
 			return Dispatch(context, GetType().GetMethod(methodName), vars);
-		}
-
-		private NestedDictionary ProcessForm()
-		{
-			var dict = new NestedDictionary();
-			IFormCollection rForm;
-			try
-			{
-				rForm = Request.Form;
-			}
-			catch (InvalidOperationException)
-			{
-				return dict;
-			}
-
-			foreach (var key in rForm.Keys)
-				dict.Set(key, rForm[key].LastOrDefault());
-			return _form = dict;
 		}
 
 		protected HttpResponse Redirect(string path, int code = 303)
@@ -289,25 +192,14 @@ namespace TreeRouter.Http
 			return resp;
 		}
 
-		protected HttpResponse Json(object obj, PreserveReferencesHandling handling = PreserveReferencesHandling.None)
+		protected HttpResponse SendJson(object obj)
 		{
 			var resp = new HttpResponse
 			{
-				Body = JsonConvert.SerializeObject(obj, JsonSettings(handling))
+				Body = JsonConvert.SerializeObject(obj, JsonSettings)
 			};
 			resp.Headers["Content-Type"] = "application/json";
-			resp.Headers["Access-Control-Allow-Origin"] = "*";
 			return resp;
-		}
-
-		protected JsonSerializerSettings JsonSettings(
-			PreserveReferencesHandling handling = PreserveReferencesHandling.None)
-		{
-			return new JsonSerializerSettings
-			{
-				ContractResolver = new CamelCasePropertyNamesContractResolver(),
-				PreserveReferencesHandling = handling
-			};
 		}
 		
 	}
