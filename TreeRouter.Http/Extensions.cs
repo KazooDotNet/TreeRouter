@@ -32,17 +32,32 @@ namespace TreeRouter.Http
 		public static IApplicationBuilder TreeMap(this IApplicationBuilder builder, Action<RouteBuilder> action)
 			=> TreeMap(builder, null, action);
 		
-		public static Task Dispatch(this IRouter router, HttpContext context)
+		public static async Task Dispatch(this IRouter router, HttpContext context)
 		{
 			var req = context.Request;
 			var path = req.PathBase == null ? 
 				req.Path.ToString() : req.PathBase.ToString().TrimEnd('/') + '/' + req.Path.ToString().TrimStart('/');
 			var method = req.Method.ToLower();
 			var contentType = context.Request.ContentType ?? "";
-			if (method == "post" && contentType.Contains("form") && context.Request.Form.ContainsKey("_method"))
-				method = context.Request.Form["_method"];
-			return router.Dispatch(path, method, context, context.RequestServices);
+            var np = await context.SetupNestedParams();
+			if (method == "post" && contentType.Contains("form") && np.Form.ContainsKey("_method"))
+				method = np.Form["_method"] as string ?? "post";
+			await router.Dispatch(path, method, context, context.RequestServices);
 		}
+
+        public static async Task<NestedParams> SetupNestedParams(this HttpContext context)
+        {
+            NestedParams np = null;
+            if (context.Items.ContainsKey("nestedParams"))
+                np = context.Items["nestedParams"] as NestedParams;
+            if (np == null)
+            {
+                np = new NestedParams(context);
+                await np.ProcessForm();
+                context.Items["nestedParams"] = np;
+            }    
+            return np;
+        }
 		
 	}
 }

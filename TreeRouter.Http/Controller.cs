@@ -80,14 +80,8 @@ namespace TreeRouter.Http
 		protected async Task Dispatch(HttpContext context, MethodInfo method, params object[] list)
 		{
 			Context = context;
-            if (Context.Items.ContainsKey("nestedParams") && Context.Items["nestedParams"] is NestedParams np)
-                _nestedParams = np;
-            else
-                _nestedParams = new NestedParams(Context);
-
-            if (_nestedParams.IsForm && !_nestedParams.FormProcessed)
-                await _nestedParams.ProcessForm();
-
+            _nestedParams = await context.SetupNestedParams();
+            
             if (RouteVars != null)
             {
                 if (_nestedParams.ExtraParams == null)
