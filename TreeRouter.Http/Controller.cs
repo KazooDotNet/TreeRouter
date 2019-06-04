@@ -25,43 +25,43 @@ namespace TreeRouter.Http
 		public readonly EventEmitter<Controller> AfterAction = 
 			new EventEmitter<Controller>();
 
-        protected HttpContext Context { get; set; }
-        protected HttpRequest Request => Context.Request;
-        protected Microsoft.AspNetCore.Http.HttpResponse Response => Context.Response;
-        protected ISession Session => Context.Session;
-        protected bool SessionAvailable => Context.Features.Get<ISessionFeature>() != null;
-        protected RequestDictionary RouteVars { get; private set; }
+		protected HttpContext Context { get; set; }
+		protected HttpRequest Request => Context.Request;
+		protected Microsoft.AspNetCore.Http.HttpResponse Response => Context.Response;
+		protected ISession Session => Context.Session;
+		protected bool SessionAvailable => Context.Features.Get<ISessionFeature>() != null;
+		protected RequestDictionary RouteVars { get; private set; }
 
-        private NestedParams _nestedParams;
-        
-        protected bool IsForm => _nestedParams.IsForm;
-        protected bool IsJson => _nestedParams.IsJson;
-        protected NestedDictionary Form => _nestedParams.Form;
-        protected NestedDictionary Json => _nestedParams.Json;
-        protected NestedDictionary Query => _nestedParams.Query;
-        protected NestedDictionary Params => _nestedParams.Params;
+		private NestedParams _nestedParams;
+		
+		protected bool IsForm => _nestedParams.IsForm;
+		protected bool IsJson => _nestedParams.IsJson;
+		protected NestedDictionary Form => _nestedParams.Form;
+		protected NestedDictionary Json => _nestedParams.Json;
+		protected NestedDictionary Query => _nestedParams.Query;
+		protected NestedDictionary Params => _nestedParams.Params;
 
-        protected JsonSerializerSettings JsonSettings { get; set; } = new JsonSerializerSettings
-        {
-            ContractResolver = new CamelCasePropertyNamesContractResolver(),
-            PreserveReferencesHandling = PreserveReferencesHandling.None
-        };
-        
-        protected string RequestMethod
+		protected JsonSerializerSettings JsonSettings { get; set; } = new JsonSerializerSettings
+		{
+			ContractResolver = new CamelCasePropertyNamesContractResolver(),
+			PreserveReferencesHandling = PreserveReferencesHandling.None
+		};
+		
+		protected string RequestMethod
 		{
 			get
 			{
 				var method = Request.Method.ToLower();
 				if (method == "post" && IsForm && Form.ContainsKey("_method") &&
-				        !string.IsNullOrEmpty(Form["_method"].ToString()))
+						!string.IsNullOrEmpty(Form["_method"].ToString()))
 					return Request.Form["_method"].ToString().ToLower();
 				return Request.Method.ToLower();
 			}
 		}
 
-        protected bool AcceptsJson => Request.Headers.ContainsKey("Accept") &&
-		                              Request.Headers["Accept"].ToString().Contains("json");
-        
+		protected bool AcceptsJson => Request.Headers.ContainsKey("Accept") &&
+									  Request.Headers["Accept"].ToString().Contains("json");
+		
 
 		public async Task Route(Request routerRequest)
 		{
@@ -80,16 +80,16 @@ namespace TreeRouter.Http
 		protected async Task Dispatch(HttpContext context, MethodInfo method, params object[] list)
 		{
 			Context = context;
-            _nestedParams = await context.SetupNestedParams();
-            
-            if (RouteVars != null)
-            {
-                if (_nestedParams.ExtraParams == null)
-                    _nestedParams.ExtraParams = new NestedDictionary();
-                foreach (var pair in RouteVars)
-                    _nestedParams.ExtraParams.Set(pair.Key, pair.Value);
-            }
-            
+			_nestedParams = await context.SetupNestedParams();
+			
+			if (RouteVars != null)
+			{
+				if (_nestedParams.ExtraParams == null)
+					_nestedParams.ExtraParams = new NestedDictionary();
+				foreach (var pair in RouteVars)
+					_nestedParams.ExtraParams.Set(pair.Key, pair.Value);
+			}
+			
 			await BeforeDispatch.Invoke(this);
 			
 			var ca = new ControllerArgs();
@@ -150,7 +150,7 @@ namespace TreeRouter.Http
 			{
 				case Stream stream:
 					if (!stream.CanRead)
-						throw new ArgumentException("Can't read stream");
+						throw new ArgumentException("Can't read HttpResponse stream");
 					if (stream.CanSeek)
 						stream.Seek(0, SeekOrigin.Begin);
 					await stream.CopyToAsync(Response.Body, 51200); // Copy in 50KB chunks
@@ -166,9 +166,16 @@ namespace TreeRouter.Http
 					// Do nothing
 					break;
 				default:
+					await CleanUp();
 					throw new Exception(
 						$"Unknown response type from controller: {response.GetType().FullName} (in {GetType().FullName})");
 			}
+			await CleanUp();
+		}
+
+		private async Task CleanUp()
+		{
+			await _nestedParams.FormFileCleanup();
 		}
 
 		protected Task Dispatch(HttpContext context, string methodName, params object[] vars)

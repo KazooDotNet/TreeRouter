@@ -25,18 +25,16 @@ namespace TreeRouter.Http
 					using (var scope = scopeFactory.CreateScope())
 					{
 						context.RequestServices = scope.ServiceProvider;
-						await _router.Dispatch(context);	
+						await _router.Dispatch(context);
 					}	
 				}
 				else
 				{
 					await _router.Dispatch(context);
 				}
-				
 			}
-			catch (Errors.RouteNotFound e)
+			catch (Errors.RouteNotFound)
 			{
-				Console.WriteLine(e);
 				if (_next == null) throw;
 				await _next.Invoke(context);
 			}

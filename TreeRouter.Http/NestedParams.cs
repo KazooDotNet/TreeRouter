@@ -1,11 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using KazooDotNet.Utils;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http.Internal;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Net.Http.Headers;
@@ -19,6 +22,7 @@ namespace TreeRouter.Http
         
         private HttpContext _context;
         private NestedDictionary _query;
+        public List<FileStream> TempFiles { get; private set; } 
 
         public bool IsForm => _context.Request.ContentType?.Contains("form") ?? false;
         public bool IsJson => _context.Request.ContentType?.Contains("json") ?? false;
@@ -70,6 +74,8 @@ namespace TreeRouter.Http
         public JsonSerializerSettings JsonSettings { get; set; }
         
         private NestedDictionary _json;
+        private FormOptions _formOptions;
+
         public NestedDictionary Json
         {
             get
@@ -83,12 +89,13 @@ namespace TreeRouter.Http
         public bool JsonProcessed { get; set; }
         
         
-        public NestedParams(HttpContext context)
+        public NestedParams(HttpContext context, FormOptions formOptions)
         {
             _context = context;
+            _formOptions = formOptions;
         }
         
-        public async Task ProcessForm()
+        public async Task ProcessForm(CancellationToken token = default)
         {
             if (FormProcessed)
                 return;
@@ -111,8 +118,14 @@ namespace TreeRouter.Http
                 if (body.CanSeek)
                     body.Position = 0;
                 var reader = new MultipartReader(matches.Groups[1].Value, body);
+                if (_formOptions != null)
+                {
+                    reader.BodyLengthLimit = _formOptions?.MultipartBodyLengthLimit;
+                    reader.HeadersLengthLimit = ((int?) _formOptions?.MultipartBodyLengthLimit) ?? 16384;
+                } 
+                     
                 MultipartSection section;
-                while ((section = await reader.ReadNextSectionAsync()) != null)
+                while ((section = await reader.ReadNextSectionAsync(token)) != null)
                 {
                     var dispo = section.GetContentDispositionHeader();
                     if (dispo.IsFileDisposition())
@@ -121,24 +134,44 @@ namespace TreeRouter.Http
                         IFormFile formFile;
                         using (var fs = fileSection.FileStream)
                         {
-                            // TODO: why is fs.Length always 0?
-                            if (fs.Length > 102400)
+                            var ms = new MemoryStream();
+                            FileStream tempFile = null;
+                            var totalRead = 0;
+                            var bytes = new byte[32768];
+                            while (true)
                             {
-                                // TODO: clean up temp files after use
-                                var path = Path.GetTempFileName();
-                                using (var file = File.Open(path, FileMode.Open, FileAccess.Write))
+                                var bytesRead = await fs.ReadAsync(bytes, 0, bytes.Length, token);
+                                if (bytesRead == 0)
+                                    break;
+                                totalRead += bytesRead;
+                                switch (tempFile)
                                 {
-                                    await fs.CopyToAsync(file, 32768);
+                                    case null when totalRead > 65536:
+                                        var path = Path.GetTempFileName();
+                                        tempFile = File.Open(path, FileMode.Open, FileAccess.Write);
+                                        await ms.CopyToAsync(tempFile);
+                                        continue;
+                                    case null:
+                                        await ms.WriteAsync(bytes, 0, bytesRead, token);
+                                        break;
+                                    default:
+                                        await tempFile.WriteAsync(bytes, 0, bytesRead, token);
+                                        break;
                                 }
-                                var roFile = File.Open(path, FileMode.Open, FileAccess.Read);
+                            }
+
+                            if (tempFile != null)
+                            {
+                                if (TempFiles == null)
+                                    TempFiles = new List<FileStream>();
+                                var roFile = File.Open(tempFile.Name, FileMode.Open, FileAccess.Read);
+                                tempFile.Dispose();
                                 formFile = new FormFile(roFile, 0, roFile.Length, fileSection.Name, fileSection.FileName);
                             }
                             else
                             {
-                                var stream = new MemoryStream();
-                                await fs.CopyToAsync(stream);
-                                formFile = new FormFile(stream, 0, stream.Length, fileSection.Name, fileSection.FileName);
-                            }    
+                                formFile = new FormFile(ms, 0, ms.Length, fileSection.Name, fileSection.FileName);
+                            }
                         }
                         Form.Set(fileSection.Name, formFile);
                     }
@@ -164,6 +197,19 @@ namespace TreeRouter.Http
                 // TODO: report malformed errors somehow
             }
 		}
+
+        public Task FormFileCleanup()
+        {
+            if (TempFiles == null)
+                return Task.CompletedTask;
+            foreach (var tf in TempFiles)
+            {
+                if (File.Exists(tf.Name))
+                    File.Delete(tf.Name);
+                tf.Dispose();
+            }
+            return Task.CompletedTask;
+        }
         
         
         // TODO: make this preserve JSON types
