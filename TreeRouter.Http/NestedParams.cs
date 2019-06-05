@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using TreeRouter.Http.MultipartFormParser;
 
 namespace TreeRouter.Http
 {
@@ -115,71 +116,13 @@ namespace TreeRouter.Http
                     return;
                 
                 var body = _context.Request.Body;
-                if (body.CanSeek)
-                    body.Position = 0;
-                var reader = new MultipartReader(matches.Groups[1].Value, body);
-                if (_formOptions != null)
+                // TODO: get encoding from Content-Type or default to UTF8
+                var reader = new Parser(body, matches.Groups[1].Value, Encoding.UTF8);
+                await reader.Parse();
+                foreach (var paramList in reader.Parameters.Values)
                 {
-                    reader.BodyLengthLimit = _formOptions?.MultipartBodyLengthLimit;
-                    reader.HeadersLengthLimit = ((int?) _formOptions?.MultipartBodyLengthLimit) ?? 16384;
-                } 
-                     
-                MultipartSection section;
-                while ((section = await reader.ReadNextSectionAsync(token)) != null)
-                {
-                    var dispo = section.GetContentDispositionHeader();
-                    if (dispo.IsFileDisposition())
-                    {
-                        var fileSection = section.AsFileSection();
-                        IFormFile formFile;
-                        using (var fs = fileSection.FileStream)
-                        {
-                            var ms = new MemoryStream();
-                            FileStream tempFile = null;
-                            var totalRead = 0;
-                            var bytes = new byte[32768];
-                            while (true)
-                            {
-                                var bytesRead = await fs.ReadAsync(bytes, 0, bytes.Length, token);
-                                if (bytesRead == 0)
-                                    break;
-                                totalRead += bytesRead;
-                                switch (tempFile)
-                                {
-                                    case null when totalRead > 65536:
-                                        var path = Path.GetTempFileName();
-                                        tempFile = File.Open(path, FileMode.Open, FileAccess.Write);
-                                        await ms.CopyToAsync(tempFile);
-                                        continue;
-                                    case null:
-                                        await ms.WriteAsync(bytes, 0, bytesRead, token);
-                                        break;
-                                    default:
-                                        await tempFile.WriteAsync(bytes, 0, bytesRead, token);
-                                        break;
-                                }
-                            }
-
-                            if (tempFile != null)
-                            {
-                                if (TempFiles == null)
-                                    TempFiles = new List<FileStream>();
-                                var roFile = File.Open(tempFile.Name, FileMode.Open, FileAccess.Read);
-                                tempFile.Dispose();
-                                formFile = new FormFile(roFile, 0, roFile.Length, fileSection.Name, fileSection.FileName);
-                            }
-                            else
-                            {
-                                formFile = new FormFile(ms, 0, ms.Length, fileSection.Name, fileSection.FileName);
-                            }
-                        }
-                        Form.Set(fileSection.Name, formFile);
-                    }
-                    else if (dispo.IsFormDisposition())
-                    {
-                        var formSection = section.AsFormDataSection();
-                        Form.Set(formSection.Name, await formSection.GetValueAsync());
-                    }
+	                var param = paramList[paramList.Count - 1];
+	                Form.Set(param.Name, param.Data);
                 }
                 FormProcessed = true;
                 return;
