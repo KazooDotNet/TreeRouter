@@ -3,26 +3,27 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace TreeRouter.Http.MultipartFormParser
 {
 	public class Parser
 	{
-		private static readonly Regex FileMatcher = new Regex(@"filename=""([^""]+)""", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-		private static readonly Regex NameMatcher = new Regex(@"name=""([^""]+)""", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+		private static readonly Regex FileMatcher = new Regex(@"filename=""([^""]+)""", RegexOptions.Compiled);
+		private static readonly Regex NameMatcher = new Regex(@"name=""([^""]+)""", RegexOptions.Compiled);
 		
-		private Stream _body;
-		private byte[] _boundaryBytes;
-		private Encoding _encoding;
-		private byte[] _headerEndingBytes;
+		private readonly Stream _body;
+		private readonly byte[] _boundaryBytes;
+		private readonly Encoding _encoding;
+		private readonly byte[] _headerEndingBytes;
 		
 		public Dictionary<string, List<IFormParameter>> Parameters { get; } = new Dictionary<string, List<IFormParameter>>();
 
 		public long MultiPartFileLimit { get; set; } = 1024000;
 		public long MultiPartFieldLimit { get; set; } = 32768;
 		public int HeaderLimit { get; set; } = 16384;
-		public int BufferSize { get; set; } = 16384;
+		public int BufferSize { get; set; } = 8192;
 		public int TempFileLimit { get; set; } = 65536;
 
 		public Parser(Stream body, string boundary, Encoding encoding)
@@ -33,24 +34,23 @@ namespace TreeRouter.Http.MultipartFormParser
 			_headerEndingBytes = _encoding.GetBytes("\r\n\r\n");
 		}
 
-		public async Task Parse()
+		public async Task Parse(CancellationToken token = default)
 		{  
 			if (_boundaryBytes.Length * 2 > BufferSize)
-				throw new ArgumentException("Buffer size needs to be at least twice boundary length");
+				throw new ArgumentException("Buffer size needs to be at least twice boundary (in bytes)");
 			if (_body.CanSeek)
 				_body.Seek(0, SeekOrigin.Begin);
 			else if (_body.Position != 0)
 				throw new ArgumentException("Request stream has been read already and cannot be rewound");
-
-			var bytes = await ReadSection(new byte[] { }, null); 
+			var bytes = await ReadSection(new byte[] { }, null, token); 
 			while (_body.Position < _body.Length)
 			{
-				var (headers, leftovers) = await ReadHeaders(bytes);
-				bytes = await ReadSection(leftovers, headers);
+				var (headers, leftovers) = await ReadHeaders(bytes, token);
+				bytes = await ReadSection(leftovers, headers, token);
 			}
 		}
 
-		private async Task<(Dictionary<string, List<string>>, byte[])> ReadHeaders(byte[] initialBytes)
+		private async Task<(Dictionary<string, List<string>>, byte[])> ReadHeaders(byte[] initialBytes, CancellationToken token)
 		{
 			var pos = BytePosition(initialBytes, _headerEndingBytes);
 			string headerString;
@@ -61,16 +61,16 @@ namespace TreeRouter.Http.MultipartFormParser
 				Array.Copy(initialBytes, finishedBytes, pos);
 				headerString = _encoding.GetString(finishedBytes);
 				leftovers = new byte[initialBytes.Length - pos];
-				Array.Copy(initialBytes, pos + 1, leftovers, 0, initialBytes.Length - pos);
+				Array.Copy(initialBytes, pos + 1, leftovers, 0, initialBytes.Length - pos - 1);
 			}
 			else
 			{
 				var bytes = new List<byte>(initialBytes);
 				var buffer = new byte[BufferSize];
-				var skipAhead = initialBytes.Length - 10;
+				var skipAhead = initialBytes.Length - _boundaryBytes.Length;
 				while (true)
 				{
-					var readBytes = await _body.ReadAsync(buffer, 0, BufferSize);
+					var readBytes = await _body.ReadAsync(buffer, 0, BufferSize, token);
 					if (readBytes == 0)
 						return (null, null);
 					bytes.AddRange(buffer);
@@ -81,7 +81,7 @@ namespace TreeRouter.Http.MultipartFormParser
 						headerString = _encoding.GetString(bytes.GetRange(0, pos2).ToArray());
 						break;
 					}
-					skipAhead = bytes.Count - 10;
+					skipAhead = bytes.Count - _boundaryBytes.Length;
 				}
 			}
 
@@ -100,11 +100,11 @@ namespace TreeRouter.Http.MultipartFormParser
 			return (headers, leftovers);
 		}
 
-		private async Task<byte[]> ReadSection(byte[] initialBytes, IReadOnlyDictionary<string, List<string>> headers)
+		private async Task<byte[]> ReadSection(byte[] initialBytes, IReadOnlyDictionary<string, List<string>> headers, CancellationToken token)
 		{
 			string name = null;
 			string fileName = null;
-			if (headers != null && headers.ContainsKey("Content-Type") && headers["Content-Type"].Count > 0)
+			if (headers != null && headers.ContainsKey("Content-Disposition") && headers["Content-Disposition"].Count > 0)
 			{
 				var cd = headers["Content-Disposition"][0];
 				if (cd.Contains("form-data"))
@@ -122,125 +122,146 @@ namespace TreeRouter.Http.MultipartFormParser
 			bufferBytes[1] = initialBytes;
 			FileStream fs = null;
 			var leftovers = new byte[0];
-
-			using (var ms = new MemoryStream())
+			var ms = new MemoryStream();
+			
+			while (true)
 			{
-				while (true)
+				bufferBytes[0] = bufferBytes[1];
+				bufferBytes[1] = new byte[BufferSize];
+				var readBytes = await _body.ReadAsync(bufferBytes[1], 0, BufferSize, token);
+				if (readBytes == 0)
+					break;
+				var checkBytes = new byte[bufferBytes[0].Length + bufferBytes[1].Length];
+				bufferBytes[0].CopyTo(checkBytes, 0);
+				bufferBytes[1].CopyTo(checkBytes, bufferBytes[0].Length);
+				var boundaryPosition = BytePosition(checkBytes, _boundaryBytes);
+				if (boundaryPosition > -1)
 				{
-					bufferBytes[0] = bufferBytes[1];
-					bufferBytes[1] = new byte[BufferSize];
-					var readBytes = await _body.ReadAsync(bufferBytes[1], 0, BufferSize);
-					if (readBytes == 0)
-						break;
-					var checkBytes = new byte[bufferBytes[0].Length + bufferBytes[1].Length];
-					bufferBytes[0].CopyTo(checkBytes, 0);
-					bufferBytes[1].CopyTo(checkBytes, bufferBytes[0].Length);
-					var boundaryPosition = BytePosition(checkBytes, _boundaryBytes);
-					if (boundaryPosition > -1)
+					var beginPos = boundaryPosition + _boundaryBytes.Length;
+					var len = checkBytes.Length - beginPos;
+					var writePos = beginPos - bufferBytes[0].Length;
+					if (writePos >= 0)
 					{
-						var len = boundaryPosition - bufferBytes[0].Length;
-						var copyToStream = new byte[len];
-						Array.Copy(bufferBytes[1], 0, copyToStream, 0, len);
-						leftovers = new byte[bufferBytes[1].Length - len];
-						Array.Copy(bufferBytes[1], len, leftovers, 0, bufferBytes[1].Length - len);
-						break;
+						if (fs != null)
+							await fs.WriteAsync(bufferBytes[1], 0, writePos, token);
+						else
+							await ms.WriteAsync(bufferBytes[1], 0, writePos, token);
 					}
-
-					if (fs == null && name != null)
-					{
-						await ms.WriteAsync(bufferBytes[1], 0, bufferBytes[1].Length);
-						if (fileName != null && ms.Length > TempFileLimit)
-						{
-							fs = File.OpenWrite(Path.GetTempFileName());
-							await ms.CopyToAsync(fs);
-						} 
-						else if (fileName == null && ms.Length > MultiPartFieldLimit)
-						{
-							throw new ArgumentException($"`{name}` is too long. Max limit is {MultiPartFieldLimit} bytes");
-						}
-					}
-					else if (fs != null)
-					{
-						await fs.WriteAsync(bufferBytes[1], 0, bufferBytes[1].Length);
-					}
-
-					if (boundaryPosition > -1)
-						break;
-				}
-				
-				IFormParameter param;
-				string contentType = null;
-				if (fileName != null)
-				{
-					headers.TryGetValue("Content-Type", out var ct);
-					if (ct != null && ct.Count > 0)
-						contentType = ct[0];
-				}
-				if (fs != null)
-				{
-					param = new FormParameter<IUploadFileParameter>
-					{
-						Name = name,
-						Data = new FileParameter(File.OpenRead(fs.Name))
-						{
-							ContentType = contentType,
-							FileName = fileName
-						}
-					};
-				}
-				else if (fileName != null)
-				{
-					ms.Seek(0, SeekOrigin.Begin);
-					param = new FormParameter<IUploadFileParameter>
-					{
-						Name = name,
-						Data = new MemoryParameter(ms)
-						{
-							ContentType = contentType,
-							FileName = fileName
-						}
-					};
-				}
-				else
-				{
-					ms.Seek(0, SeekOrigin.Begin);
-					param = new FormParameter<string>
-					{
-						Name = name,
-						Data = new StreamReader(ms).ReadToEnd()
-					};
+					leftovers = new byte[len];
+					Array.Copy(checkBytes, beginPos, leftovers, 0, len);
+					break;
 				}
 
-				if (name != null)
+				if (fs == null && name != null)
 				{
-					if (!Parameters.ContainsKey(name))
-						Parameters[name] = new List<IFormParameter>();
-					Parameters[name].Add(param);	
+					await ms.WriteAsync(bufferBytes[1], 0, bufferBytes[1].Length, token);
+					if (fileName != null && ms.Length > TempFileLimit)
+					{
+						fs = File.OpenWrite(Path.GetTempFileName());
+						await ms.CopyToAsync(fs);
+					} 
+					else if (fileName == null && ms.Length > MultiPartFieldLimit)
+					{
+						throw new ArgumentException($"`{name}` is too long. Max limit is {MultiPartFieldLimit} bytes");
+					}
 				}
-				
+				else if (fs != null)
+				{
+					await fs.WriteAsync(bufferBytes[1], 0, bufferBytes[1].Length, token);
+				}
+
+				if (boundaryPosition > -1)
+					break;
+			}
+			
+			IFormParameter param;
+			string contentType = null;
+			if (fileName != null)
+			{
+				headers.TryGetValue("Content-Type", out var ct);
+				if (ct != null && ct.Count > 0)
+					contentType = ct[0];
+			}
+			if (fs != null)
+			{
+				fs.Close();
+				param = new FormParameter<IUploadFileParameter>
+				{
+					Name = name,
+					Data = new FileParameter(File.OpenRead(fs.Name))
+					{
+						ContentType = contentType,
+						FileName = fileName
+					}
+				};
+				fs.Dispose();
+				ms.Dispose();
+			}
+			else if (fileName != null)
+			{
+				ms.Seek(0, SeekOrigin.Begin);
+				param = new FormParameter<IUploadFileParameter>
+				{
+					Name = name,
+					Data = new MemoryParameter(ms)
+					{
+						ContentType = contentType,
+						FileName = fileName
+					}
+				};
+			}
+			else
+			{
+				ms.Seek(0, SeekOrigin.Begin);
+				param = new FormParameter<string>
+				{
+					Name = name,
+					Data = new StreamReader(ms).ReadToEnd()
+				};
+				ms.Dispose();
 			}
 
+			if (name != null)
+			{
+				if (!Parameters.ContainsKey(name))
+					Parameters[name] = new List<IFormParameter>();
+				Parameters[name].Add(param);	
+			}
+			else
+			{
+				ms.Dispose();
+				if (fs != null)
+				{
+					fs.Close();
+					File.Delete(fs.Name);
+					fs.Dispose();
+				}
+			}
+			
 			return leftovers;
 		}
 
 		private int BytePosition(IReadOnlyList<byte> haystack, IReadOnlyList<byte> needle, int haystackIndex = 0)
 		{
-			if (needle.Count> haystack.Count)
+			var nCount = needle.Count;
+			var hCount = haystack.Count;
+			if (nCount > hCount)
 				return -1;
 			var needleIndex = 0;
 			if (haystackIndex < 0) 
 				haystackIndex = 0;
 			
-			while(haystackIndex < haystack.Count - 1)
+			while(haystackIndex < hCount)
 			{
 				var h = haystack[haystackIndex];
-				if (needle[needleIndex] == h)
+				var n = needle[needleIndex];
+				if (n == h)
 					needleIndex++;
 				else
 					needleIndex = 0;
-				if (needleIndex == needle.Count)
-					return haystackIndex - needle.Count;
 				haystackIndex++;
+				if (needleIndex == nCount)
+					return haystackIndex - nCount;
 			}
 			return -1;
 		}

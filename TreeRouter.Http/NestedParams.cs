@@ -8,10 +8,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using KazooDotNet.Utils;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.Http.Internal;
-using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using TreeRouter.Http.MultipartFormParser;
@@ -75,7 +71,6 @@ namespace TreeRouter.Http
         public JsonSerializerSettings JsonSettings { get; set; }
         
         private NestedDictionary _json;
-        private FormOptions _formOptions;
 
         public NestedDictionary Json
         {
@@ -90,10 +85,9 @@ namespace TreeRouter.Http
         public bool JsonProcessed { get; set; }
         
         
-        public NestedParams(HttpContext context, FormOptions formOptions)
+        public NestedParams(HttpContext context)
         {
             _context = context;
-            _formOptions = formOptions;
         }
         
         public async Task ProcessForm(CancellationToken token = default)
@@ -104,7 +98,7 @@ namespace TreeRouter.Http
             if (!IsForm)
                 return;
             _context.Request.Headers.TryGetValue("Content-Type", out var cts);
-            var ct = cts.FirstOrDefault()?.ToLowerInvariant();
+            var ct = cts.FirstOrDefault();
             if (ct == null)
                 return;
 
@@ -116,9 +110,9 @@ namespace TreeRouter.Http
                     return;
                 
                 var body = _context.Request.Body;
-                // TODO: get encoding from Content-Type or default to UTF8
-                var reader = new Parser(body, matches.Groups[1].Value, Encoding.UTF8);
-                await reader.Parse();
+                // TODO: get encoding from Content-Type or fallback to default
+                var reader = new Parser(body, $"--{matches.Groups[1].Value}", Encoding.Default);
+                await reader.Parse(token);
                 foreach (var paramList in reader.Parameters.Values)
                 {
 	                var param = paramList[paramList.Count - 1];
@@ -192,8 +186,8 @@ namespace TreeRouter.Http
                         break;
                 }
         }
-        
-        public void ProcessJson()
+
+        private void ProcessJson()
         {
             if (JsonProcessed)
                 return;
