@@ -111,7 +111,7 @@ namespace TreeRouter.Http
                 
                 var body = _context.Request.Body;
                 // TODO: get encoding from Content-Type or fallback to default
-                var reader = new Parser(body, $"--{matches.Groups[1].Value}", Encoding.Default);
+                var reader = new Parser(body, matches.Groups[1].Value, Encoding.Default);
                 await reader.Parse(token);
                 foreach (var paramList in reader.Parameters.Values)
                 {

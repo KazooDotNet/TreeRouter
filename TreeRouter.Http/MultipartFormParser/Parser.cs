@@ -15,8 +15,12 @@ namespace TreeRouter.Http.MultipartFormParser
 		
 		private readonly Stream _body;
 		private readonly byte[] _boundaryBytes;
-		private readonly Encoding _encoding;
+		private readonly byte[] _boundaryEndBytes;
+		private readonly byte[] _lrBytes;
 		private readonly byte[] _headerEndingBytes;
+		private readonly byte[] _endBytes;
+		private readonly Encoding _encoding;
+		
 		
 		public Dictionary<string, List<IFormParameter>> Parameters { get; } = new Dictionary<string, List<IFormParameter>>();
 
@@ -30,8 +34,10 @@ namespace TreeRouter.Http.MultipartFormParser
 		{
 			_body = body;
 			_encoding = encoding;
-			_boundaryBytes = _encoding.GetBytes(boundary);
+			_boundaryBytes = _encoding.GetBytes("--" + boundary);
 			_headerEndingBytes = _encoding.GetBytes("\r\n\r\n");
+			_lrBytes = _encoding.GetBytes("\r\n");
+			_endBytes = _encoding.GetBytes("--");
 		}
 
 		public async Task Parse(CancellationToken token = default)
@@ -61,10 +67,11 @@ namespace TreeRouter.Http.MultipartFormParser
 				Array.Copy(initialBytes, finishedBytes, pos);
 				headerString = _encoding.GetString(finishedBytes);
 				leftovers = new byte[initialBytes.Length - pos];
-				Array.Copy(initialBytes, pos + 1, leftovers, 0, initialBytes.Length - pos - 1);
+				Array.Copy(initialBytes, pos + _headerEndingBytes.Length, leftovers, 0, initialBytes.Length - pos - _headerEndingBytes.Length);
 			}
 			else
 			{
+				// TODO: make sure this works
 				var bytes = new List<byte>(initialBytes);
 				var buffer = new byte[BufferSize];
 				var skipAhead = initialBytes.Length - _boundaryBytes.Length;
@@ -123,7 +130,7 @@ namespace TreeRouter.Http.MultipartFormParser
 			FileStream fs = null;
 			var leftovers = new byte[0];
 			var ms = new MemoryStream();
-			
+			await ms.WriteAsync(initialBytes, 0, initialBytes.Length, token);
 			while (true)
 			{
 				bufferBytes[0] = bufferBytes[1];
@@ -158,7 +165,7 @@ namespace TreeRouter.Http.MultipartFormParser
 					if (fileName != null && ms.Length > TempFileLimit)
 					{
 						fs = File.OpenWrite(Path.GetTempFileName());
-						await ms.CopyToAsync(fs);
+						await fs.WriteAsync(ms.ToArray(), 0, (int) ms.Length, token);
 					} 
 					else if (fileName == null && ms.Length > MultiPartFieldLimit)
 					{
@@ -230,12 +237,6 @@ namespace TreeRouter.Http.MultipartFormParser
 			else
 			{
 				ms.Dispose();
-				if (fs != null)
-				{
-					fs.Close();
-					File.Delete(fs.Name);
-					fs.Dispose();
-				}
 			}
 			
 			return leftovers;
