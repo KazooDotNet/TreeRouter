@@ -16,7 +16,6 @@ namespace TreeRouter.Http.MultipartFormParser
 		
 		private readonly Stream _body;
 		private readonly byte[] _boundaryBytes;
-		private readonly byte[] _boundaryEndBytes;
 		private readonly byte[] _lrBytes;
 		private readonly byte[] _headerEndingBytes;
 		private readonly byte[] _endBytes;
@@ -40,6 +39,16 @@ namespace TreeRouter.Http.MultipartFormParser
 			_lrBytes = _encoding.GetBytes("\r\n");
 			_endBytes = _encoding.GetBytes("--");
 		}
+		
+		public Parser(Stream body, string boundary, Encoding encoding, FormOptions options) : this(body, boundary, encoding)
+		{
+			if (options == null) return;
+			MultiPartFileLimit = options.MultiPartFileLimit;
+			MultiPartFieldLimit = options.MultiPartFieldLimit;
+			HeaderLimit = options.HeaderLimit;
+			BufferSize = options.BufferSize;
+			TempFileLimit = options.TempFileLimit;
+		}
 
 		public async Task Parse(CancellationToken token = default)
 		{  
@@ -50,7 +59,7 @@ namespace TreeRouter.Http.MultipartFormParser
 			else if (_body.Position != 0)
 				throw new ArgumentException("Request stream has been read already and cannot be rewound");
 			var bytes = await ReadSection(new byte[] { }, null, token); 
-			while (_body.Position < _body.Length)
+			while (bytes.Length > 0)
 			{
 				var (headers, leftovers) = await ReadHeaders(bytes, token);
 				bytes = await ReadSection(leftovers, headers, token);
@@ -145,8 +154,9 @@ namespace TreeRouter.Http.MultipartFormParser
 				var boundaryPosition = checkBytes.SequenceSearch(_boundaryBytes);
 				if (boundaryPosition > -1)
 				{
-					var beginPos = boundaryPosition + _boundaryBytes.Length;
-					var len = checkBytes.Length - beginPos;
+					var beginPos = boundaryPosition;
+					if (headers != null)
+						beginPos -= _lrBytes.Length;
 					var writePos = beginPos - bufferBytes[0].Length;
 					if (writePos >= 0)
 					{
@@ -155,8 +165,10 @@ namespace TreeRouter.Http.MultipartFormParser
 						else
 							await ms.WriteAsync(bufferBytes[1], 0, writePos, token);
 					}
+					var nextPos = beginPos + _boundaryBytes.Length + _lrBytes.Length * 2;
+					var len = checkBytes.Length - nextPos;
 					leftovers = new byte[len];
-					Array.Copy(checkBytes, beginPos, leftovers, 0, len);
+					Array.Copy(checkBytes, nextPos, leftovers, 0, len);
 					break;
 				}
 
@@ -176,13 +188,19 @@ namespace TreeRouter.Http.MultipartFormParser
 				else if (fs != null)
 				{
 					await fs.WriteAsync(bufferBytes[1], 0, bufferBytes[1].Length, token);
+					if (fs.Position > MultiPartFileLimit)
+					{
+						fs.Close();
+						File.Delete(fs.Name);
+						throw new ArgumentException($"`{name}` is too long. Max limit is {MultiPartFileLimit} bytes");
+					}
 				}
 
 				if (boundaryPosition > -1)
 					break;
 			}
 			
-			IFormParameter param;
+			IFormParameter param = null;
 			string contentType = null;
 			if (fileName != null)
 			{
@@ -218,7 +236,7 @@ namespace TreeRouter.Http.MultipartFormParser
 					}
 				};
 			}
-			else
+			else if (name != null)
 			{
 				ms.Seek(0, SeekOrigin.Begin);
 				param = new FormParameter<string>
@@ -229,7 +247,7 @@ namespace TreeRouter.Http.MultipartFormParser
 				ms.Dispose();
 			}
 
-			if (name != null)
+			if (param != null && name != null)
 			{
 				if (!Parameters.ContainsKey(name))
 					Parameters[name] = new List<IFormParameter>();

@@ -17,7 +17,7 @@ namespace TreeRouter.Http
     public class NestedParams
     {   
         
-        private HttpContext _context;
+        private readonly HttpContext _context;
         private NestedDictionary _query;
         public List<FileStream> TempFiles { get; private set; } 
 
@@ -71,6 +71,7 @@ namespace TreeRouter.Http
         public JsonSerializerSettings JsonSettings { get; set; }
         
         private NestedDictionary _json;
+        private FormOptions _formOptions;
 
         public NestedDictionary Json
         {
@@ -85,9 +86,10 @@ namespace TreeRouter.Http
         public bool JsonProcessed { get; set; }
         
         
-        public NestedParams(HttpContext context)
+        public NestedParams(HttpContext context, FormOptions options)
         {
             _context = context;
+            _formOptions = options;
         }
         
         public async Task ProcessForm(CancellationToken token = default)
@@ -111,7 +113,7 @@ namespace TreeRouter.Http
                 
                 var body = _context.Request.Body;
                 // TODO: get encoding from Content-Type or fallback to default
-                var reader = new Parser(body, matches.Groups[1].Value, Encoding.Default);
+                var reader = new Parser(body, matches.Groups[1].Value, Encoding.Default, _formOptions);
                 await reader.Parse(token);
                 foreach (var paramList in reader.Parameters.Values)
                 {

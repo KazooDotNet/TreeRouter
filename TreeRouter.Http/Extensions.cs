@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -58,7 +54,7 @@ namespace TreeRouter.Http
 			if (np == null)
             {
                 var formOptions = context.RequestServices.GetService<IOptions<FormOptions>>();
-				np = new NestedParams(context);
+				np = new NestedParams(context, formOptions.Value);
 				await np.ProcessForm();
 				context.Items["nestedParams"] = np;
 			}    
