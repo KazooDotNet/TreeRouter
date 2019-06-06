@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using KazooDotNet.Utils;
 
 namespace TreeRouter.Http.MultipartFormParser
 {
@@ -58,7 +59,7 @@ namespace TreeRouter.Http.MultipartFormParser
 
 		private async Task<(Dictionary<string, List<string>>, byte[])> ReadHeaders(byte[] initialBytes, CancellationToken token)
 		{
-			var pos = BytePosition(initialBytes, _headerEndingBytes);
+			var pos = initialBytes.SequenceSearch(_headerEndingBytes);
 			string headerString;
 			byte[] leftovers;
 			if (pos > -1)
@@ -81,7 +82,7 @@ namespace TreeRouter.Http.MultipartFormParser
 					if (readBytes == 0)
 						return (null, null);
 					bytes.AddRange(buffer);
-					var pos2 = BytePosition(bytes, _headerEndingBytes, skipAhead);
+					var pos2 = bytes.SequenceSearch(_headerEndingBytes, skipAhead);
 					if (pos2 > -1)
 					{
 						leftovers = bytes.GetRange(pos2 + 1, bytes.Count - pos2).ToArray();
@@ -141,7 +142,7 @@ namespace TreeRouter.Http.MultipartFormParser
 				var checkBytes = new byte[bufferBytes[0].Length + bufferBytes[1].Length];
 				bufferBytes[0].CopyTo(checkBytes, 0);
 				bufferBytes[1].CopyTo(checkBytes, bufferBytes[0].Length);
-				var boundaryPosition = BytePosition(checkBytes, _boundaryBytes);
+				var boundaryPosition = checkBytes.SequenceSearch(_boundaryBytes);
 				if (boundaryPosition > -1)
 				{
 					var beginPos = boundaryPosition + _boundaryBytes.Length;
@@ -242,30 +243,7 @@ namespace TreeRouter.Http.MultipartFormParser
 			return leftovers;
 		}
 
-		private int BytePosition(IReadOnlyList<byte> haystack, IReadOnlyList<byte> needle, int haystackIndex = 0)
-		{
-			var nCount = needle.Count;
-			var hCount = haystack.Count;
-			if (nCount > hCount)
-				return -1;
-			var needleIndex = 0;
-			if (haystackIndex < 0) 
-				haystackIndex = 0;
-			
-			while(haystackIndex < hCount)
-			{
-				var h = haystack[haystackIndex];
-				var n = needle[needleIndex];
-				if (n == h)
-					needleIndex++;
-				else
-					needleIndex = 0;
-				haystackIndex++;
-				if (needleIndex == nCount)
-					return haystackIndex - nCount;
-			}
-			return -1;
-		}
+		
 		
 	}
 	
