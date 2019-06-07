@@ -5,7 +5,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using KazooDotNet.Utils;
 
 namespace TreeRouter.Http.MultipartFormParser
 {
@@ -13,16 +12,17 @@ namespace TreeRouter.Http.MultipartFormParser
 	{
 		private static readonly Regex FileMatcher = new Regex(@"filename=""([^""]+)""", RegexOptions.Compiled);
 		private static readonly Regex NameMatcher = new Regex(@"name=""([^""]+)""", RegexOptions.Compiled);
-		
+
 		private readonly Stream _body;
 		private readonly byte[] _boundaryBytes;
-		private readonly byte[] _lrBytes;
+		private readonly byte[] _lineEndingBytes;
+		private readonly byte[][] _endBoundaryBytes;
 		private readonly byte[] _headerEndingBytes;
-		private readonly byte[] _endBytes;
 		private readonly Encoding _encoding;
-		
-		
-		public Dictionary<string, List<IFormParameter>> Parameters { get; } = new Dictionary<string, List<IFormParameter>>();
+
+
+		public Dictionary<string, List<IFormParameter>> Parameters { get; } =
+			new Dictionary<string, List<IFormParameter>>();
 
 		public long MultiPartFileLimit { get; set; } = 1024000;
 		public long MultiPartFieldLimit { get; set; } = 32768;
@@ -36,11 +36,12 @@ namespace TreeRouter.Http.MultipartFormParser
 			_encoding = encoding;
 			_boundaryBytes = _encoding.GetBytes("--" + boundary);
 			_headerEndingBytes = _encoding.GetBytes("\r\n\r\n");
-			_lrBytes = _encoding.GetBytes("\r\n");
-			_endBytes = _encoding.GetBytes("--");
+			_lineEndingBytes = _encoding.GetBytes("\r\n");
+			_endBoundaryBytes = new[] {_lineEndingBytes, _encoding.GetBytes("--")};
 		}
-		
-		public Parser(Stream body, string boundary, Encoding encoding, FormOptions options) : this(body, boundary, encoding)
+
+		public Parser(Stream body, string boundary, Encoding encoding, FormOptions options) : this(body, boundary,
+			encoding)
 		{
 			if (options == null) return;
 			MultiPartFileLimit = options.MultiPartFileLimit;
@@ -51,77 +52,62 @@ namespace TreeRouter.Http.MultipartFormParser
 		}
 
 		public async Task Parse(CancellationToken token = default)
-		{  
-			if (_boundaryBytes.Length * 2 > BufferSize)
-				throw new ArgumentException("Buffer size needs to be at least twice boundary (in bytes)");
+		{
+			if (_boundaryBytes.Length > BufferSize)
+				throw new ArgumentException("Buffer size needs to be at least the boundary size");
 			if (_body.CanSeek)
 				_body.Seek(0, SeekOrigin.Begin);
 			else if (_body.Position != 0)
 				throw new ArgumentException("Request stream has been read already and cannot be rewound");
-			var bytes = await ReadSection(new byte[] { }, null, token); 
-			while (bytes.Length > 0)
+			byte[] bytes;
+			bool finished;
+			(bytes, finished) = await ReadUntilBoundary(_boundaryBytes, needle2s: _endBoundaryBytes, token: token);
+			while (!finished)
 			{
-				var (headers, leftovers) = await ReadHeaders(bytes, token);
-				bytes = await ReadSection(leftovers, headers, token);
+				Dictionary<string, List<string>> headers;
+				byte[] leftovers;
+				(headers, leftovers, finished) = await ReadHeaders(bytes, token);
+				if (finished)
+					return;
+				(bytes, finished) = await ReadSection(leftovers, headers, token);
 			}
 		}
 
-		private async Task<(Dictionary<string, List<string>>, byte[])> ReadHeaders(byte[] initialBytes, CancellationToken token)
+		private async Task<(Dictionary<string, List<string>>, byte[], bool)> ReadHeaders(byte[] initialBytes,
+			CancellationToken token)
 		{
-			var pos = initialBytes.SequenceSearch(_headerEndingBytes);
-			string headerString;
-			byte[] leftovers;
-			if (pos > -1)
+			var headerStream = new MemoryStream();
+			var (leftovers, finished) = await ReadUntilBoundary(initialBytes, _headerEndingBytes, headerStream, token: token);
+			while (leftovers == null && !finished)
 			{
-				var finishedBytes = new byte[pos];
-				Array.Copy(initialBytes, finishedBytes, pos);
-				headerString = _encoding.GetString(finishedBytes);
-				leftovers = new byte[initialBytes.Length - pos];
-				Array.Copy(initialBytes, pos + _headerEndingBytes.Length, leftovers, 0, initialBytes.Length - pos - _headerEndingBytes.Length);
+				(leftovers, finished) = await ReadUntilBoundary(_headerEndingBytes, headerStream, token: token);
 			}
-			else
-			{
-				// TODO: make sure this works
-				var bytes = new List<byte>(initialBytes);
-				var buffer = new byte[BufferSize];
-				var skipAhead = initialBytes.Length - _boundaryBytes.Length;
-				while (true)
-				{
-					var readBytes = await _body.ReadAsync(buffer, 0, BufferSize, token);
-					if (readBytes == 0)
-						return (null, null);
-					bytes.AddRange(buffer);
-					var pos2 = bytes.SequenceSearch(_headerEndingBytes, skipAhead);
-					if (pos2 > -1)
-					{
-						leftovers = bytes.GetRange(pos2 + 1, bytes.Count - pos2).ToArray();
-						headerString = _encoding.GetString(bytes.GetRange(0, pos2).ToArray());
-						break;
-					}
-					skipAhead = bytes.Count - _boundaryBytes.Length;
-				}
-			}
-
+			if (finished)
+				return (null, leftovers, true);
+			headerStream.Seek(0, SeekOrigin.Begin);
+			var headerString = await new StreamReader(headerStream).ReadToEndAsync();
 			var headers = new Dictionary<string, List<string>>();
-			var parts = headerString.Split(new [] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
+			var parts = headerString.Split(new[] {"\r\n"}, StringSplitOptions.RemoveEmptyEntries);
 			foreach (var part in parts)
 			{
 				if (!part.Contains(":")) continue;
-				var pair = part.Split(new[] { ':' }, 2);
+				var pair = part.Split(new[] {':'}, 2);
 				var key = pair[0].Trim();
 				if (!headers.ContainsKey(key))
 					headers[key] = new List<string>();
 				headers[key].Add(pair[1].Trim());
 			}
 
-			return (headers, leftovers);
+			return (headers, leftovers, false);
 		}
 
-		private async Task<byte[]> ReadSection(byte[] initialBytes, IReadOnlyDictionary<string, List<string>> headers, CancellationToken token)
+		private async Task<(byte[], bool)> ReadSection(byte[] initialBytes, IReadOnlyDictionary<string, List<string>> headers,
+			CancellationToken token)
 		{
 			string name = null;
 			string fileName = null;
-			if (headers != null && headers.ContainsKey("Content-Disposition") && headers["Content-Disposition"].Count > 0)
+			if (headers != null && headers.ContainsKey("Content-Disposition") &&
+			    headers["Content-Disposition"].Count > 0)
 			{
 				var cd = headers["Content-Disposition"][0];
 				if (cd.Contains("form-data"))
@@ -134,72 +120,39 @@ namespace TreeRouter.Http.MultipartFormParser
 						name = nameMatch.Groups[1].Value;
 				}
 			}
-			
-			var bufferBytes = new byte[2][];
-			bufferBytes[1] = initialBytes;
-			FileStream fs = null;
-			var leftovers = new byte[0];
-			var ms = new MemoryStream();
-			await ms.WriteAsync(initialBytes, 0, initialBytes.Length, token);
-			while (true)
-			{
-				bufferBytes[0] = bufferBytes[1];
-				bufferBytes[1] = new byte[BufferSize];
-				var readBytes = await _body.ReadAsync(bufferBytes[1], 0, BufferSize, token);
-				if (readBytes == 0)
-					break;
-				var checkBytes = new byte[bufferBytes[0].Length + bufferBytes[1].Length];
-				bufferBytes[0].CopyTo(checkBytes, 0);
-				bufferBytes[1].CopyTo(checkBytes, bufferBytes[0].Length);
-				var boundaryPosition = checkBytes.SequenceSearch(_boundaryBytes);
-				if (boundaryPosition > -1)
-				{
-					var beginPos = boundaryPosition;
-					if (headers != null)
-						beginPos -= _lrBytes.Length;
-					var writePos = beginPos - bufferBytes[0].Length;
-					if (writePos >= 0)
-					{
-						if (fs != null)
-							await fs.WriteAsync(bufferBytes[1], 0, writePos, token);
-						else
-							await ms.WriteAsync(bufferBytes[1], 0, writePos, token);
-					}
-					var nextPos = beginPos + _boundaryBytes.Length + _lrBytes.Length * 2;
-					var len = checkBytes.Length - nextPos;
-					leftovers = new byte[len];
-					Array.Copy(checkBytes, nextPos, leftovers, 0, len);
-					break;
-				}
 
-				if (fs == null && name != null)
+			var ms = new MemoryStream();
+			FileStream fs = null;
+			Stream mainStream = ms;
+			var (leftovers, finished) =
+				await ReadUntilBoundary(initialBytes, _boundaryBytes, mainStream, _endBoundaryBytes, true, token);
+			while (leftovers == null && !finished)
+			{
+				if (fs == null && fileName != null && ms.Length > TempFileLimit)
 				{
-					await ms.WriteAsync(bufferBytes[1], 0, bufferBytes[1].Length, token);
-					if (fileName != null && ms.Length > TempFileLimit)
-					{
-						fs = File.OpenWrite(Path.GetTempFileName());
-						await fs.WriteAsync(ms.ToArray(), 0, (int) ms.Length, token);
-					} 
-					else if (fileName == null && ms.Length > MultiPartFieldLimit)
-					{
-						throw new ArgumentException($"`{name}` is too long. Max limit is {MultiPartFieldLimit} bytes");
-					}
+					fs = File.OpenWrite(Path.GetTempFileName());
+					await fs.WriteAsync(ms.ToArray(), 0, (int) ms.Length, token);
+					mainStream = fs;
 				}
-				else if (fs != null)
+				
+				if (fileName != null && mainStream.Position > MultiPartFileLimit)
 				{
-					await fs.WriteAsync(bufferBytes[1], 0, bufferBytes[1].Length, token);
-					if (fs.Position > MultiPartFileLimit)
+					if (fs != null)
 					{
 						fs.Close();
-						File.Delete(fs.Name);
-						throw new ArgumentException($"`{name}` is too long. Max limit is {MultiPartFileLimit} bytes");
+						File.Delete(fs.Name);	
 					}
+					throw new ArgumentException($"`{name}` is longer than limit: {MultiPartFileLimit}");
+				}
+				
+				if (fileName == null && ms.Length > MultiPartFieldLimit)
+				{
+					throw new ArgumentException($"`{name}` is longer than limit: {MultiPartFieldLimit}");
 				}
 
-				if (boundaryPosition > -1)
-					break;
+				(leftovers, finished) = await ReadUntilBoundary(_boundaryBytes, mainStream, _endBoundaryBytes, true, token);
 			}
-			
+
 			IFormParameter param = null;
 			string contentType = null;
 			if (fileName != null)
@@ -208,11 +161,13 @@ namespace TreeRouter.Http.MultipartFormParser
 				if (ct != null && ct.Count > 0)
 					contentType = ct[0];
 			}
+
 			if (fs != null)
 			{
 				fs.Close();
 				param = new FormParameter<IUploadFileParameter>
 				{
+					Headers = headers,
 					Name = name,
 					Data = new FileParameter(File.OpenRead(fs.Name))
 					{
@@ -228,6 +183,7 @@ namespace TreeRouter.Http.MultipartFormParser
 				ms.Seek(0, SeekOrigin.Begin);
 				param = new FormParameter<IUploadFileParameter>
 				{
+					Headers = headers,
 					Name = name,
 					Data = new MemoryParameter(ms)
 					{
@@ -241,6 +197,7 @@ namespace TreeRouter.Http.MultipartFormParser
 				ms.Seek(0, SeekOrigin.Begin);
 				param = new FormParameter<string>
 				{
+					Headers = headers,
 					Name = name,
 					Data = new StreamReader(ms).ReadToEnd()
 				};
@@ -251,19 +208,145 @@ namespace TreeRouter.Http.MultipartFormParser
 			{
 				if (!Parameters.ContainsKey(name))
 					Parameters[name] = new List<IFormParameter>();
-				Parameters[name].Add(param);	
+				Parameters[name].Add(param);
 			}
-			else
-			{
-				ms.Dispose();
-			}
+			return (leftovers, false);
 			
-			return leftovers;
 		}
 
-		
-		
+
+		private async Task<(byte[] Leftovers, bool Finished)> ReadUntilBoundary(IReadOnlyList<byte> needle1,
+			Stream stream = null, IReadOnlyList<byte>[] needle2s = null, bool trimEnding = false, CancellationToken token = default)
+		{
+			var buffer = new byte[BufferSize];
+			var totalRead = await _body.ReadAsync(buffer, 0, BufferSize, token);
+			if (totalRead == 0)
+				return (Leftovers: new byte[0], Finished: true);
+			return await ReadUntilBoundary(buffer, needle1, stream, needle2s, trimEnding, token);
+		}
+
+		private async Task<(byte[] Leftovers, bool Finished)> ReadUntilBoundary(IEnumerable<byte> initialBuffer,
+			IReadOnlyList<byte> needle1, Stream stream = null, IReadOnlyList<byte>[] needle2s = null, bool trimEnding = false, 
+			CancellationToken token = default)
+		{
+			var bufferList = new List<byte>(initialBuffer);
+			var buffer = new byte[BufferSize];
+
+			int totalRead;
+			int? leftoverPos = null;
+			var (pos, partialMatch) = SequenceSearch(bufferList, needle1);
+			if (partialMatch)
+			{
+				totalRead = await _body.ReadAsync(buffer, 0, BufferSize, token);
+				if (totalRead == 0)
+				{
+					if (stream != null)
+						await stream.WriteAsync(bufferList.ToArray(), 0, bufferList.Count, token);
+					return (Leftovers: new byte[0], Finished: true);
+				}
+
+				bufferList.AddRange(buffer);
+				(pos, _) = SequenceSearch(bufferList, needle1, pos);
+			}
+
+			if (pos > -1 && needle2s != null)
+			{
+				foreach (var needle2 in needle2s)
+				{
+					var (pos2, partial2) = SequenceSearch(bufferList, needle2, pos + needle1.Count);
+					if (partial2)
+					{
+						totalRead = await _body.ReadAsync(buffer, 0, BufferSize, token);
+						if (totalRead == 0)
+						{
+							if (stream != null)
+								await stream.WriteAsync(bufferList.ToArray(), 0, bufferList.Count, token);
+							return (Leftovers: new byte[0], Finished: true);
+						}
+
+						bufferList.AddRange(buffer);
+						(pos2, _) = SequenceSearch(bufferList, needle2, pos2);
+					}
+
+					if (pos2 > -1)
+					{
+						leftoverPos = pos + needle1.Count + needle2.Count;
+						break;
+					}
+				}
+			}
+			else if (pos > -1)
+			{
+				leftoverPos = pos + needle1.Count;
+			}
+
+			if (leftoverPos != null)
+			{
+				var skip = false;
+				if (pos > 0 && trimEnding)
+				{
+					if (pos < _lineEndingBytes.Length)
+					{
+						skip = true;
+					}
+					else
+					{
+						var lei = 0;
+						var bli = pos - _lineEndingBytes.Length;
+						while (bli < pos)
+						{
+							if (bufferList[bli] != _lineEndingBytes[lei])
+							{
+								skip = true;
+								break;
+							}
+							bli++;
+							lei++;
+						}
+					}
+				}
+
+				if (!skip)
+				{
+					if (stream != null)
+					{
+						var finalPos = trimEnding ? pos - _lineEndingBytes.Length : pos;
+						await stream.WriteAsync(bufferList.ToArray(), 0, finalPos, token);
+					}
+					var leftovers = new byte[bufferList.Count - leftoverPos.Value];
+					bufferList.CopyTo(leftoverPos.Value, leftovers, 0, bufferList.Count - leftoverPos.Value);
+					return (Leftovers: leftovers, Finished: false);	
+				}
+				
+				
+			}
+
+			if (stream != null)
+				await stream.WriteAsync(bufferList.ToArray(), 0, bufferList.Count, token);
+
+			return (null, false);
+		}
+
+		private static (int Position, bool Partial) SequenceSearch(IReadOnlyList<byte> haystack, IReadOnlyList<byte> needle,
+			int haystackIndex = 0)
+		{
+			var needleIndex = 0;
+			while (haystackIndex < haystack.Count)
+			{
+				var h = haystack[haystackIndex];
+				var n = needle[needleIndex];
+				if (h == n)
+					needleIndex++;
+				else
+					needleIndex = 0;
+				haystackIndex++;
+				if (needleIndex == needle.Count)
+					return (Position: haystackIndex - needle.Count, Partial: false);
+			}
+
+			return needleIndex > 0
+				? (Position: haystackIndex - needleIndex, Partial: true)
+				: (Position: -1, Partial: false);
+		}
 	}
-	
-	
 }
