@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace TreeRouter.Http.MultipartFormParser
+namespace TreeRouter.Http.MultipartForm
 {
 	public interface IFormParameter
 	{

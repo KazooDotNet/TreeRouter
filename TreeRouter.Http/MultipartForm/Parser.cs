@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace TreeRouter.Http.MultipartFormParser
+namespace TreeRouter.Http.MultipartForm
 {
 	public class Parser
 	{
@@ -57,8 +57,6 @@ namespace TreeRouter.Http.MultipartFormParser
 				throw new ArgumentException("Buffer size needs to be at least the boundary size");
 			if (_body.CanSeek)
 				_body.Seek(0, SeekOrigin.Begin);
-			else if (_body.Position != 0)
-				throw new ArgumentException("Request stream has been read already and cannot be rewound");
 			byte[] bytes;
 			bool finished;
 			(bytes, finished) = await ReadUntilBoundary(_boundaryBytes, needle2s: _endBoundaryBytes, token: token);
@@ -283,34 +281,19 @@ namespace TreeRouter.Http.MultipartFormParser
 			if (leftoverPos != null)
 			{
 				var skip = false;
+				var expectedLineEndingPos = pos - _lineEndingBytes.Length;
 				if (pos > 0 && trimEnding)
 				{
-					if (pos < _lineEndingBytes.Length)
-					{
+					var (lePos, _) = SequenceSearch(bufferList, _lineEndingBytes, expectedLineEndingPos);
+					if (lePos != expectedLineEndingPos)
 						skip = true;
-					}
-					else
-					{
-						var lei = 0;
-						var bli = pos - _lineEndingBytes.Length;
-						while (bli < pos)
-						{
-							if (bufferList[bli] != _lineEndingBytes[lei])
-							{
-								skip = true;
-								break;
-							}
-							bli++;
-							lei++;
-						}
-					}
 				}
 
 				if (!skip)
 				{
 					if (stream != null)
 					{
-						var finalPos = trimEnding ? pos - _lineEndingBytes.Length : pos;
+						var finalPos = trimEnding ? expectedLineEndingPos : pos;
 						await stream.WriteAsync(bufferList.ToArray(), 0, finalPos, token);
 					}
 					var leftovers = new byte[bufferList.Count - leftoverPos.Value];

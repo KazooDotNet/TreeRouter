@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace TreeRouter.Http.MultipartFormParser
+namespace TreeRouter.Http.MultipartForm
 {
 	public class MemoryParameter : IUploadFileParameter
 	{

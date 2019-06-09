@@ -10,7 +10,7 @@ using KazooDotNet.Utils;
 using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using TreeRouter.Http.MultipartFormParser;
+using TreeRouter.Http.MultipartForm;
 
 namespace TreeRouter.Http
 {
@@ -19,13 +19,14 @@ namespace TreeRouter.Http
         
         private readonly HttpContext _context;
         private NestedDictionary _query;
-        public List<FileStream> TempFiles { get; private set; } 
 
         public bool IsForm => _context.Request.ContentType?.Contains("form") ?? false;
         public bool IsJson => _context.Request.ContentType?.Contains("json") ?? false;
         
         public NestedDictionary Form { get; private set; }
         public bool FormProcessed { get; set; }
+
+        private List<FileParameter> _tempFiles = null;
         
         public NestedDictionary Query
         {
@@ -119,6 +120,10 @@ namespace TreeRouter.Http
                 {
 	                var param = paramList[paramList.Count - 1];
 	                Form.Set(param.Name, param.Data);
+	                if (!(param.Data is FileParameter fp)) continue;
+	                if (_tempFiles == null)
+		                _tempFiles = new List<FileParameter>();
+	                _tempFiles.Add(fp);
                 }
                 FormProcessed = true;
                 return;
@@ -139,13 +144,14 @@ namespace TreeRouter.Http
 
         public Task FormFileCleanup()
         {
-            if (TempFiles == null)
+            if (_tempFiles == null)
                 return Task.CompletedTask;
-            foreach (var tf in TempFiles)
+            foreach (var tf in _tempFiles)
             {
-                if (File.Exists(tf.Name))
-                    File.Delete(tf.Name);
-                tf.Dispose();
+	            tf.File.Close();
+                if (File.Exists(tf.File.Name))
+                    File.Delete(tf.File.Name);
+                tf.File.Dispose();
             }
             return Task.CompletedTask;
         }

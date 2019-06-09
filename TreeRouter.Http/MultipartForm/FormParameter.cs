@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace TreeRouter.Http.MultipartFormParser
+namespace TreeRouter.Http.MultipartForm
 {
 	public class FormParameter<T> : IFormParameter {
 		public IReadOnlyDictionary<string, List<string>> Headers { get; set; } = new Dictionary<string, List<string>>();
