@@ -4,10 +4,11 @@
     <LangVersion>7.1</LangVersion>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="KazooDotNet.Utils" Version="0.1.3" />
     <PackageReference Include="MessagePack" Version="1.7.3.4" />
-    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.0.3" />
-    <PackageReference Include="Microsoft.AspNetCore.Http.Extensions" Version="2.2.0" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="2.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.1.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Extensions" Version="2.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="2.1.0" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
   </ItemGroup>
   <ItemGroup>
@@ -16,7 +17,7 @@
   <PropertyGroup>
     <PackageId>TreeRouter.Http</PackageId>
     <Title>Tree Router - Http Adapter</Title>
-    <VersionPrefix>0.9.7.3</VersionPrefix>
+    <VersionPrefix>0.9.9.1</VersionPrefix>
     <VersionSuffix />
     <PackageProjectUrl>https://github.com/AccentuateMe/TreeRouter</PackageProjectUrl>
     <Description>TreeRouter for .NetCore apps</Description>

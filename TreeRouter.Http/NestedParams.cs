@@ -1,23 +1,23 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using KazooDotNet.Utils;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Internal;
-using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using TreeRouter.Http.MultipartForm;
 
 namespace TreeRouter.Http
 {
     public class NestedParams
     {   
         
-        private HttpContext _context;
+        private readonly HttpContext _context;
         private NestedDictionary _query;
 
         public bool IsForm => _context.Request.ContentType?.Contains("form") ?? false;
@@ -25,6 +25,8 @@ namespace TreeRouter.Http
         
         public NestedDictionary Form { get; private set; }
         public bool FormProcessed { get; set; }
+
+        private List<FileParameter> _tempFiles = null;
         
         public NestedDictionary Query
         {
@@ -70,6 +72,8 @@ namespace TreeRouter.Http
         public JsonSerializerSettings JsonSettings { get; set; }
         
         private NestedDictionary _json;
+        private FormOptions _formOptions;
+
         public NestedDictionary Json
         {
             get
@@ -83,12 +87,13 @@ namespace TreeRouter.Http
         public bool JsonProcessed { get; set; }
         
         
-        public NestedParams(HttpContext context)
+        public NestedParams(HttpContext context, FormOptions options)
         {
             _context = context;
+            _formOptions = options;
         }
         
-        public async Task ProcessForm()
+        public async Task ProcessForm(CancellationToken token = default)
         {
             if (FormProcessed)
                 return;
@@ -96,7 +101,7 @@ namespace TreeRouter.Http
             if (!IsForm)
                 return;
             _context.Request.Headers.TryGetValue("Content-Type", out var cts);
-            var ct = cts.FirstOrDefault()?.ToLowerInvariant();
+            var ct = cts.FirstOrDefault();
             if (ct == null)
                 return;
 
@@ -108,45 +113,17 @@ namespace TreeRouter.Http
                     return;
                 
                 var body = _context.Request.Body;
-                if (body.CanSeek)
-                    body.Position = 0;
-                var reader = new MultipartReader(matches.Groups[1].Value, body);
-                MultipartSection section;
-                while ((section = await reader.ReadNextSectionAsync()) != null)
+                // TODO: get encoding from Content-Type or fallback to default
+                var reader = new Parser(body, matches.Groups[1].Value, Encoding.Default, _formOptions);
+                await reader.Parse(token);
+                foreach (var paramList in reader.Parameters.Values)
                 {
-                    var dispo = section.GetContentDispositionHeader();
-                    if (dispo.IsFileDisposition())
-                    {
-                        var fileSection = section.AsFileSection();
-                        IFormFile formFile;
-                        using (var fs = fileSection.FileStream)
-                        {
-                            // TODO: why is fs.Length always 0?
-                            if (fs.Length > 102400)
-                            {
-                                // TODO: clean up temp files after use
-                                var path = Path.GetTempFileName();
-                                using (var file = File.Open(path, FileMode.Open, FileAccess.Write))
-                                {
-                                    await fs.CopyToAsync(file, 32768);
-                                }
-                                var roFile = File.Open(path, FileMode.Open, FileAccess.Read);
-                                formFile = new FormFile(roFile, 0, roFile.Length, fileSection.Name, fileSection.FileName);
-                            }
-                            else
-                            {
-                                var stream = new MemoryStream();
-                                await fs.CopyToAsync(stream);
-                                formFile = new FormFile(stream, 0, stream.Length, fileSection.Name, fileSection.FileName);
-                            }    
-                        }
-                        Form.Set(fileSection.Name, formFile);
-                    }
-                    else if (dispo.IsFormDisposition())
-                    {
-                        var formSection = section.AsFormDataSection();
-                        Form.Set(formSection.Name, await formSection.GetValueAsync());
-                    }
+	                var param = paramList[paramList.Count - 1];
+	                Form.Set(param.Name, param.Data);
+	                if (!(param.Data is FileParameter fp)) continue;
+	                if (_tempFiles == null)
+		                _tempFiles = new List<FileParameter>();
+	                _tempFiles.Add(fp);
                 }
                 FormProcessed = true;
                 return;
@@ -164,6 +141,20 @@ namespace TreeRouter.Http
                 // TODO: report malformed errors somehow
             }
 		}
+
+        public Task FormFileCleanup()
+        {
+            if (_tempFiles == null)
+                return Task.CompletedTask;
+            foreach (var tf in _tempFiles)
+            {
+	            tf.File.Close();
+                if (File.Exists(tf.File.Name))
+                    File.Delete(tf.File.Name);
+                tf.File.Dispose();
+            }
+            return Task.CompletedTask;
+        }
         
         
         // TODO: make this preserve JSON types
@@ -203,8 +194,8 @@ namespace TreeRouter.Http
                         break;
                 }
         }
-        
-        public void ProcessJson()
+
+        private void ProcessJson()
         {
             if (JsonProcessed)
                 return;
