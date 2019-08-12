@@ -14,7 +14,6 @@ namespace TreeRouter.Http.MultipartForm
 		public string ContentType { get; set; }
 		public FileStream File { get; }
 		public StreamReader GetStreamReader() => new StreamReader(File);
-
-		
+		public Stream Stream => File;
 	}
 }
