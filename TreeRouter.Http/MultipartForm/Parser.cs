@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -16,10 +17,8 @@ namespace TreeRouter.Http.MultipartForm
 		private readonly Stream _body;
 		private readonly byte[] _boundaryBytes;
 		private readonly byte[] _lineEndingBytes;
-		private readonly byte[][] _endBoundaryBytes;
+		private readonly IReadOnlyList<byte>[] _endBoundaryBytes;
 		private readonly byte[] _headerEndingBytes;
-		private readonly Encoding _encoding;
-
 
 		public Dictionary<string, List<IFormParameter>> Parameters { get; } =
 			new Dictionary<string, List<IFormParameter>>();
@@ -33,11 +32,11 @@ namespace TreeRouter.Http.MultipartForm
 		public Parser(Stream body, string boundary, Encoding encoding)
 		{
 			_body = body;
-			_encoding = encoding;
-			_boundaryBytes = _encoding.GetBytes("--" + boundary);
-			_headerEndingBytes = _encoding.GetBytes("\r\n\r\n");
-			_lineEndingBytes = _encoding.GetBytes("\r\n");
-			_endBoundaryBytes = new[] {_lineEndingBytes, _encoding.GetBytes("--")};
+			var encoding1 = encoding;
+			_boundaryBytes = encoding1.GetBytes("--" + boundary);
+			_headerEndingBytes = encoding1.GetBytes("\r\n\r\n");
+			_lineEndingBytes = encoding1.GetBytes("\r\n");
+			_endBoundaryBytes = new IReadOnlyList<byte>[] {_lineEndingBytes, encoding1.GetBytes("--")};
 		}
 
 		public Parser(Stream body, string boundary, Encoding encoding, FormOptions options) : this(body, boundary,
@@ -220,6 +219,8 @@ namespace TreeRouter.Http.MultipartForm
 			var totalRead = await _body.ReadAsync(buffer, 0, BufferSize, token);
 			if (totalRead == 0)
 				return (Leftovers: new byte[0], Finished: true);
+			if (totalRead < buffer.Length)
+				buffer = buffer.Take(totalRead).ToArray();
 			return await ReadUntilBoundary(buffer, needle1, stream, needle2s, trimEnding, token);
 		}
 
