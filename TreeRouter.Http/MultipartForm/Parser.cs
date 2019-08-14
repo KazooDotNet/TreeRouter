@@ -208,20 +208,16 @@ namespace TreeRouter.Http.MultipartForm
 				Parameters[name].Add(param);
 			}
 			return (leftovers, false);
-			
 		}
 
 
 		private async Task<(byte[] Leftovers, bool Finished)> ReadUntilBoundary(IReadOnlyList<byte> needle1,
 			Stream stream = null, IReadOnlyList<byte>[] needle2s = null, bool trimEnding = false, CancellationToken token = default)
 		{
-			var buffer = new byte[BufferSize];
-			var totalRead = await _body.ReadAsync(buffer, 0, BufferSize, token);
-			if (totalRead == 0)
-				return (Leftovers: new byte[0], Finished: true);
-			if (totalRead < buffer.Length)
-				buffer = buffer.Take(totalRead).ToArray();
-			return await ReadUntilBoundary(buffer, needle1, stream, needle2s, trimEnding, token);
+			var readBytes = await _body.BufferReadAsync(BufferSize, token);
+			if (readBytes == null)
+				return (Leftovers: null, Finished: true);
+			return await ReadUntilBoundary(readBytes, needle1, stream, needle2s, trimEnding, token);
 		}
 
 		private async Task<(byte[] Leftovers, bool Finished)> ReadUntilBoundary(IEnumerable<byte> initialBuffer,
@@ -231,20 +227,19 @@ namespace TreeRouter.Http.MultipartForm
 			var bufferList = new List<byte>(initialBuffer);
 			var buffer = new byte[BufferSize];
 
-			int totalRead;
+			IReadOnlyList<byte> readBytes;
 			int? leftoverPos = null;
 			var (pos, partialMatch) = SequenceSearch(bufferList, needle1);
 			if (partialMatch)
 			{
-				totalRead = await _body.ReadAsync(buffer, 0, BufferSize, token);
-				if (totalRead == 0)
+				readBytes = await _body.BufferReadAsync(buffer, token);
+				if (readBytes == null)
 				{
 					if (stream != null)
 						await stream.WriteAsync(bufferList.ToArray(), 0, bufferList.Count, token);
-					return (Leftovers: new byte[0], Finished: true);
+					return (Leftovers: null, Finished: true);
 				}
-
-				bufferList.AddRange(buffer);
+				bufferList.AddRange(readBytes);
 				(pos, _) = SequenceSearch(bufferList, needle1, pos);
 			}
 
@@ -255,14 +250,13 @@ namespace TreeRouter.Http.MultipartForm
 					var (pos2, partial2) = SequenceSearch(bufferList, needle2, pos + needle1.Count);
 					if (partial2)
 					{
-						totalRead = await _body.ReadAsync(buffer, 0, BufferSize, token);
-						if (totalRead == 0)
+						readBytes = await _body.BufferReadAsync(buffer, token);
+						if (readBytes == null)
 						{
 							if (stream != null)
 								await stream.WriteAsync(bufferList.ToArray(), 0, bufferList.Count, token);
-							return (Leftovers: new byte[0], Finished: true);
+							return (Leftovers: null, Finished: true);
 						}
-
 						bufferList.AddRange(buffer);
 						(pos2, _) = SequenceSearch(bufferList, needle2, pos2);
 					}
@@ -301,8 +295,6 @@ namespace TreeRouter.Http.MultipartForm
 					bufferList.CopyTo(leftoverPos.Value, leftovers, 0, bufferList.Count - leftoverPos.Value);
 					return (Leftovers: leftovers, Finished: false);	
 				}
-				
-				
 			}
 
 			if (stream != null)
