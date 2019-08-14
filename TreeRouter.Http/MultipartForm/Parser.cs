@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -16,10 +17,8 @@ namespace TreeRouter.Http.MultipartForm
 		private readonly Stream _body;
 		private readonly byte[] _boundaryBytes;
 		private readonly byte[] _lineEndingBytes;
-		private readonly byte[][] _endBoundaryBytes;
+		private readonly IReadOnlyList<byte>[] _endBoundaryBytes;
 		private readonly byte[] _headerEndingBytes;
-		private readonly Encoding _encoding;
-
 
 		public Dictionary<string, List<IFormParameter>> Parameters { get; } =
 			new Dictionary<string, List<IFormParameter>>();
@@ -33,11 +32,11 @@ namespace TreeRouter.Http.MultipartForm
 		public Parser(Stream body, string boundary, Encoding encoding)
 		{
 			_body = body;
-			_encoding = encoding;
-			_boundaryBytes = _encoding.GetBytes("--" + boundary);
-			_headerEndingBytes = _encoding.GetBytes("\r\n\r\n");
-			_lineEndingBytes = _encoding.GetBytes("\r\n");
-			_endBoundaryBytes = new[] {_lineEndingBytes, _encoding.GetBytes("--")};
+			var encoding1 = encoding;
+			_boundaryBytes = encoding1.GetBytes("--" + boundary);
+			_headerEndingBytes = encoding1.GetBytes("\r\n\r\n");
+			_lineEndingBytes = encoding1.GetBytes("\r\n");
+			_endBoundaryBytes = new IReadOnlyList<byte>[] {_lineEndingBytes, encoding1.GetBytes("--")};
 		}
 
 		public Parser(Stream body, string boundary, Encoding encoding, FormOptions options) : this(body, boundary,
@@ -209,18 +208,16 @@ namespace TreeRouter.Http.MultipartForm
 				Parameters[name].Add(param);
 			}
 			return (leftovers, false);
-			
 		}
 
 
 		private async Task<(byte[] Leftovers, bool Finished)> ReadUntilBoundary(IReadOnlyList<byte> needle1,
 			Stream stream = null, IReadOnlyList<byte>[] needle2s = null, bool trimEnding = false, CancellationToken token = default)
 		{
-			var buffer = new byte[BufferSize];
-			var totalRead = await _body.ReadAsync(buffer, 0, BufferSize, token);
-			if (totalRead == 0)
-				return (Leftovers: new byte[0], Finished: true);
-			return await ReadUntilBoundary(buffer, needle1, stream, needle2s, trimEnding, token);
+			var readBytes = await _body.BufferReadAsync(BufferSize, token);
+			if (readBytes == null)
+				return (Leftovers: null, Finished: true);
+			return await ReadUntilBoundary(readBytes, needle1, stream, needle2s, trimEnding, token);
 		}
 
 		private async Task<(byte[] Leftovers, bool Finished)> ReadUntilBoundary(IEnumerable<byte> initialBuffer,
@@ -230,20 +227,19 @@ namespace TreeRouter.Http.MultipartForm
 			var bufferList = new List<byte>(initialBuffer);
 			var buffer = new byte[BufferSize];
 
-			int totalRead;
+			IReadOnlyList<byte> readBytes;
 			int? leftoverPos = null;
 			var (pos, partialMatch) = SequenceSearch(bufferList, needle1);
 			if (partialMatch)
 			{
-				totalRead = await _body.ReadAsync(buffer, 0, BufferSize, token);
-				if (totalRead == 0)
+				readBytes = await _body.BufferReadAsync(buffer, token);
+				if (readBytes == null)
 				{
 					if (stream != null)
 						await stream.WriteAsync(bufferList.ToArray(), 0, bufferList.Count, token);
-					return (Leftovers: new byte[0], Finished: true);
+					return (Leftovers: null, Finished: true);
 				}
-
-				bufferList.AddRange(buffer);
+				bufferList.AddRange(readBytes);
 				(pos, _) = SequenceSearch(bufferList, needle1, pos);
 			}
 
@@ -254,14 +250,13 @@ namespace TreeRouter.Http.MultipartForm
 					var (pos2, partial2) = SequenceSearch(bufferList, needle2, pos + needle1.Count);
 					if (partial2)
 					{
-						totalRead = await _body.ReadAsync(buffer, 0, BufferSize, token);
-						if (totalRead == 0)
+						readBytes = await _body.BufferReadAsync(buffer, token);
+						if (readBytes == null)
 						{
 							if (stream != null)
 								await stream.WriteAsync(bufferList.ToArray(), 0, bufferList.Count, token);
-							return (Leftovers: new byte[0], Finished: true);
+							return (Leftovers: null, Finished: true);
 						}
-
 						bufferList.AddRange(buffer);
 						(pos2, _) = SequenceSearch(bufferList, needle2, pos2);
 					}
@@ -300,8 +295,6 @@ namespace TreeRouter.Http.MultipartForm
 					bufferList.CopyTo(leftoverPos.Value, leftovers, 0, bufferList.Count - leftoverPos.Value);
 					return (Leftovers: leftovers, Finished: false);	
 				}
-				
-				
 			}
 
 			if (stream != null)
