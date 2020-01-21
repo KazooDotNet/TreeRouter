@@ -71,20 +71,11 @@ namespace TreeRouter.Http
 
         public JsonSerializerSettings JsonSettings { get; set; }
         
-        private NestedDictionary _json;
-        private FormOptions _formOptions;
+        private readonly FormOptions _formOptions;
 
-        public NestedDictionary Json
-        {
-            get
-            {
-                if (JsonProcessed) return _json;
-                ProcessJson();
-                return _json;
-            }
-        }
+        public NestedDictionary Json { get; private set; }
         
-        public bool JsonProcessed { get; set; }
+        public bool JsonProcessed { get; private set; }
         
         
         public NestedParams(HttpContext context, FormOptions options)
@@ -142,6 +133,8 @@ namespace TreeRouter.Http
             }
 		}
 
+        public Task ProcessAll() => Task.WhenAll(ProcessJson(), ProcessForm());
+
         public Task FormFileCleanup()
         {
             if (_tempFiles == null)
@@ -195,12 +188,12 @@ namespace TreeRouter.Http
                 }
         }
 
-        private void ProcessJson()
+        public async Task ProcessJson()
         {
             if (JsonProcessed)
                 return;
             
-            _json = new NestedDictionary();
+            Json = new NestedDictionary();
             if (!(_context.Request.ContentType?.Contains("json") ?? false))
             {
                 JsonProcessed = true;
@@ -212,8 +205,8 @@ namespace TreeRouter.Http
                 // TODO: use encoding set in headers
                 using (var reader = new StreamReader(_context.Request.Body, Encoding.UTF8, true, 10240, true))
                 {
-                    var @string = reader.ReadToEnd();
-                    LoopObject(_json, JsonConvert.DeserializeObject<JObject>(@string, JsonSettings));    
+                    var @string = await reader.ReadToEndAsync();
+                    LoopObject(Json, JsonConvert.DeserializeObject<JObject>(@string, JsonSettings));    
                 }
                 JsonProcessed = true;
 

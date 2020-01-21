@@ -18,7 +18,7 @@
   <PropertyGroup>
     <PackageId>TreeRouter.Http</PackageId>
     <Title>Tree Router - Http Adapter</Title>
-    <VersionPrefix>0.9.9.4</VersionPrefix>
+    <VersionPrefix>0.9.9.5</VersionPrefix>
     <VersionSuffix />
     <PackageProjectUrl>https://github.com/AccentuateMe/TreeRouter</PackageProjectUrl>
     <Description>TreeRouter for .NetCore apps</Description>
