@@ -74,11 +74,13 @@ namespace TreeRouter.Http.MultipartForm
 			CancellationToken token)
 		{
 			var headerStream = new MemoryStream();
-			var (leftovers, finished) = await ReadUntilBoundary(initialBytes, _headerEndingBytes, headerStream, token: token);
+			var (leftovers, finished) =
+				await ReadUntilBoundary(initialBytes, _headerEndingBytes, headerStream, token: token);
 			while (leftovers == null && !finished)
 			{
 				(leftovers, finished) = await ReadUntilBoundary(_headerEndingBytes, headerStream, token: token);
 			}
+
 			if (finished)
 				return (null, leftovers, true);
 			headerStream.Seek(0, SeekOrigin.Begin);
@@ -98,7 +100,8 @@ namespace TreeRouter.Http.MultipartForm
 			return (headers, leftovers, false);
 		}
 
-		private async Task<(byte[], bool)> ReadSection(byte[] initialBytes, IReadOnlyDictionary<string, List<string>> headers,
+		private async Task<(byte[], bool)> ReadSection(byte[] initialBytes,
+			IReadOnlyDictionary<string, List<string>> headers,
 			CancellationToken token)
 		{
 			string name = null;
@@ -131,23 +134,25 @@ namespace TreeRouter.Http.MultipartForm
 					await fs.WriteAsync(ms.ToArray(), 0, (int) ms.Length, token);
 					mainStream = fs;
 				}
-				
+
 				if (fileName != null && mainStream.Position > MultiPartFileLimit)
 				{
 					if (fs != null)
 					{
 						fs.Close();
-						File.Delete(fs.Name);	
+						File.Delete(fs.Name);
 					}
+
 					throw new ArgumentException($"`{name}` is longer than limit: {MultiPartFileLimit}");
 				}
-				
+
 				if (fileName == null && ms.Length > MultiPartFieldLimit)
 				{
 					throw new ArgumentException($"`{name}` is longer than limit: {MultiPartFieldLimit}");
 				}
 
-				(leftovers, finished) = await ReadUntilBoundary(_boundaryBytes, mainStream, _endBoundaryBytes, true, token);
+				(leftovers, finished) =
+					await ReadUntilBoundary(_boundaryBytes, mainStream, _endBoundaryBytes, true, token);
 			}
 
 			IFormParameter param = null;
@@ -207,12 +212,14 @@ namespace TreeRouter.Http.MultipartForm
 					Parameters[name] = new List<IFormParameter>();
 				Parameters[name].Add(param);
 			}
+
 			return (leftovers, false);
 		}
 
 
 		private async Task<(byte[] Leftovers, bool Finished)> ReadUntilBoundary(IReadOnlyList<byte> needle1,
-			Stream stream = null, IReadOnlyList<byte>[] needle2s = null, bool trimEnding = false, CancellationToken token = default)
+			Stream stream = null, IReadOnlyList<byte>[] needle2s = null, bool trimEnding = false,
+			CancellationToken token = default)
 		{
 			var readBytes = await _body.BufferReadAsync(BufferSize, token);
 			if (readBytes == null)
@@ -221,7 +228,8 @@ namespace TreeRouter.Http.MultipartForm
 		}
 
 		private async Task<(byte[] Leftovers, bool Finished)> ReadUntilBoundary(IEnumerable<byte> initialBuffer,
-			IReadOnlyList<byte> needle1, Stream stream = null, IReadOnlyList<byte>[] needle2s = null, bool trimEnding = false, 
+			IReadOnlyList<byte> needle1, Stream stream = null, IReadOnlyList<byte>[] needle2s = null,
+			bool trimEnding = false,
 			CancellationToken token = default)
 		{
 			var bufferList = new List<byte>(initialBuffer);
@@ -239,6 +247,7 @@ namespace TreeRouter.Http.MultipartForm
 						await stream.WriteAsync(bufferList.ToArray(), 0, bufferList.Count, token);
 					return (Leftovers: null, Finished: true);
 				}
+
 				bufferList.AddRange(readBytes);
 				(pos, _) = SequenceSearch(bufferList, needle1, pos);
 			}
@@ -257,6 +266,7 @@ namespace TreeRouter.Http.MultipartForm
 								await stream.WriteAsync(bufferList.ToArray(), 0, bufferList.Count, token);
 							return (Leftovers: null, Finished: true);
 						}
+
 						bufferList.AddRange(buffer);
 						(pos2, _) = SequenceSearch(bufferList, needle2, pos2);
 					}
@@ -291,9 +301,10 @@ namespace TreeRouter.Http.MultipartForm
 						var finalPos = trimEnding ? expectedLineEndingPos : pos;
 						await stream.WriteAsync(bufferList.ToArray(), 0, finalPos, token);
 					}
+
 					var leftovers = new byte[bufferList.Count - leftoverPos.Value];
 					bufferList.CopyTo(leftoverPos.Value, leftovers, 0, bufferList.Count - leftoverPos.Value);
-					return (Leftovers: leftovers, Finished: false);	
+					return (Leftovers: leftovers, Finished: false);
 				}
 			}
 
@@ -303,7 +314,8 @@ namespace TreeRouter.Http.MultipartForm
 			return (null, false);
 		}
 
-		private static (int Position, bool Partial) SequenceSearch(IReadOnlyList<byte> haystack, IReadOnlyList<byte> needle,
+		private static (int Position, bool Partial) SequenceSearch(IReadOnlyList<byte> haystack,
+			IReadOnlyList<byte> needle,
 			int haystackIndex = 0)
 		{
 			var needleIndex = 0;

@@ -2,15 +2,14 @@
 
 namespace TreeRouter.WebSocket
 {
-
 	public interface IClock
 	{
 		DateTime Now { get; }
 		DateTime UtcNow { get; }
 		DateTime Today { get; }
-		DateTime UtcToday { get;  }
+		DateTime UtcToday { get; }
 	}
-	
+
 	public class RealClock : IClock
 	{
 		public DateTime Now => DateTime.Now;
@@ -28,7 +27,7 @@ namespace TreeRouter.WebSocket
 		{
 			if (freeze)
 				Freeze();
-			SetTime(baseTime);	
+			SetTime(baseTime);
 		}
 
 		public void SetTime(DateTime? baseTime = null)

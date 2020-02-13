@@ -4,7 +4,6 @@ namespace TreeRouter
 {
 	public class BaseBuilder
 	{
-
 		public RouteOptions RouteOptions { get; protected set; }
 		protected List<BaseBuilder> Children { get; }
 
@@ -30,11 +29,9 @@ namespace TreeRouter
 					list.Add(child);
 					list.AddRange(child.AllChildren);
 				}
+
 				return list;
 			}
 		}
-
 	}
-	
-	
 }

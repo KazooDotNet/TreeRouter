@@ -10,19 +10,19 @@ namespace TreeRouter.Http
 {
 	public static class Extensions
 	{
-		
 		public static IServiceCollection AddTreeMap(this IServiceCollection collection)
 		{
 			// TODO: is this sufficient for use in multiple routers?
 			return collection.AddTransient<IRouter, Router>();
 		}
 
-		public static IApplicationBuilder TreeMap(this IApplicationBuilder builder, string prefix, 
+		public static IApplicationBuilder TreeMap(this IApplicationBuilder builder, string prefix,
 			Action<RouteBuilder> action)
 		{
 			var router = builder.ApplicationServices.GetService<IRouter>();
 			if (router == null)
-				throw new ArgumentException("Router not set. Have you set up the service by calling `AddTreeMap()` on IServiceCollection?");
+				throw new ArgumentException(
+					"Router not set. Have you set up the service by calling `AddTreeMap()` on IServiceCollection?");
 			router.Map(prefix, action);
 			builder.UseMiddleware<Middleware>(router);
 			return builder;
@@ -30,14 +30,15 @@ namespace TreeRouter.Http
 
 		public static IApplicationBuilder TreeMap(this IApplicationBuilder builder, Action<RouteBuilder> action)
 			=> TreeMap(builder, null, action);
-		
+
 		public static async Task Dispatch(this IRouter router, HttpContext context)
 		{
 			var req = context.Request;
 			if (req.Body.CanSeek)
 				req.Body.Seek(0, SeekOrigin.Begin);
-			var path = req.PathBase == null ? 
-				req.Path.ToString() : req.PathBase.ToString().TrimEnd('/') + '/' + req.Path.ToString().TrimStart('/');
+			var path = req.PathBase == null
+				? req.Path.ToString()
+				: req.PathBase.ToString().TrimEnd('/') + '/' + req.Path.ToString().TrimStart('/');
 			var method = req.Method.ToLower();
 			var contentType = context.Request.ContentType ?? "";
 			var np = await context.SetupNestedParams();
@@ -52,14 +53,14 @@ namespace TreeRouter.Http
 			if (context.Items.ContainsKey("nestedParams"))
 				np = context.Items["nestedParams"] as NestedParams;
 			if (np == null)
-            {
-                var formOptions = context.RequestServices.GetService<IOptions<FormOptions>>();
+			{
+				var formOptions = context.RequestServices.GetService<IOptions<FormOptions>>();
 				np = new NestedParams(context, formOptions?.Value ?? new FormOptions());
 				await np.ProcessAll();
 				context.Items["nestedParams"] = np;
-			}    
+			}
+
 			return np;
 		}
-		
 	}
 }

@@ -15,7 +15,7 @@ namespace Tests
 	{
 		public HttpTests()
 		{
-			_router.Map(r =>  r.Map<ConvertRouter>("/", cr =>
+			_router.Map(r => r.Map<ConvertRouter>("/", cr =>
 			{
 				cr.Get("int32").Action("Int32");
 				cr.Get("int64").Action("Int64");
@@ -32,7 +32,7 @@ namespace Tests
 			var ctx = ContextWithServices($"/int32?id={val}", "GET");
 			Assert.Equal(val.ToString(), DispatchAndRead(ctx));
 		}
-		
+
 		[Fact]
 		public async Task MapsInt64s()
 		{
@@ -40,7 +40,7 @@ namespace Tests
 			var ctx = ContextWithServices($"/int64?id={val}", "GET");
 			Assert.Equal(val.ToString(), DispatchAndRead(ctx));
 		}
-		
+
 		[Fact]
 		public async Task MapsStrings()
 		{
@@ -48,7 +48,7 @@ namespace Tests
 			var ctx = ContextWithServices($"/string?id={val}", "GET");
 			Assert.Equal($"\"{val.ToString()}\"", DispatchAndRead(ctx));
 		}
-		
+
 		[Fact]
 		public async Task MapsBools()
 		{
@@ -69,11 +69,9 @@ namespace Tests
 				q = path.Substring(qIndex);
 				path = path.Substring(0, qIndex);
 			}
-			return MakeContext(path, method, 
-				setup: ctx =>
-				{
-					
-				},
+
+			return MakeContext(path, method,
+				setup: ctx => { },
 				requestSetup: req =>
 				{
 					var qDict = new Dictionary<string, StringValues>();
@@ -86,6 +84,7 @@ namespace Tests
 						foreach (var p in parts)
 							qDict.Add(p[0], new StringValues(p[1]));
 					}
+
 					req.Setup(x => x.QueryString).Returns(new QueryString(q));
 					req.Setup(x => x.Query).Returns(new QueryCollection(qDict));
 				});

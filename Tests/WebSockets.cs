@@ -11,7 +11,7 @@ namespace Tests
 	{
 		private readonly ClientExposer _client;
 		private readonly FakeClock _clock;
-		
+
 		public WebSockets()
 		{
 			_clock = new FakeClock();
@@ -24,7 +24,7 @@ namespace Tests
 		{
 			string response = null;
 			var ts = new CancellationTokenSource();
-			var message = new MessageRequest { Method = "get", Path = "/test" };
+			var message = new MessageRequest {Method = "get", Path = "/test"};
 			_client.MessageReceived += delegate(object sender, EventArgs args)
 			{
 				var mArgs = (MessageEventArgs) args;
@@ -42,7 +42,8 @@ namespace Tests
 		{
 			var message = new MessageRequest {Method = "get", Path = "/blah"};
 			string response = null;
-			await _client.SendAsync(message, r => { 
+			await _client.SendAsync(message, r =>
+			{
 				response = r.Data["Echo"];
 				return false; // Do not keep this function around for further listening
 			});
@@ -55,7 +56,8 @@ namespace Tests
 			var message = new MessageRequest {Method = "get", Path = "/blah"};
 			var ignored = false;
 			_clock.Freeze();
-			_client.SendAsync(message, r => { 
+			_client.SendAsync(message, r =>
+			{
 				ignored = r.Timeout;
 				return false;
 			});
@@ -79,12 +81,12 @@ namespace Tests
 				tokenSource.Cancel();
 				return false;
 			});
-			await _client.SendAsync(new MessageRequest { Path = "/trigger-welcome", Method = "get" });
+			await _client.SendAsync(new MessageRequest {Path = "/trigger-welcome", Method = "get"});
 			await Delay(500, tokenSource.Token);
 			Assert.Equal(true, gotWelcome);
 		}
-		
-		
+
+
 		private static Task Delay(int ms, CancellationToken token = default(CancellationToken)) =>
 			Task.Delay(ms, token).ContinueWith(t => { });
 

@@ -1,21 +1,21 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-  </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\TreeRouter.Http\TreeRouter.Http.csproj" />
-    <ProjectReference Include="..\TreeRouter.WebSocket.Common\TreeRouter.WebSocket.Common.csproj" />
-    <ProjectReference Include="..\TreeRouter\TreeRouter.csproj" />
-  </ItemGroup>
-  <PropertyGroup>
-    <PackageId>TreeRouter.WebSocket.Server</PackageId>
-    <Title>Websockets with Tree Router</Title>
-    <VersionPrefix>0.9.7</VersionPrefix>
-    <VersionSuffix />
-    <PackageProjectUrl>https://github.com/AccentuateMe/TreeRouter</PackageProjectUrl>
-    <Description>WebSockets with TreeRouter convenience</Description>
-    <PackageTags>router;dotnet standard;modular</PackageTags>
-    <Copyright>Copyright 2018 Accentuate.Me LLC - MIT</Copyright>
-    <IncludeSource>true</IncludeSource>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\TreeRouter.Http\TreeRouter.Http.csproj" />
+        <ProjectReference Include="..\TreeRouter.WebSocket.Common\TreeRouter.WebSocket.Common.csproj" />
+        <ProjectReference Include="..\TreeRouter\TreeRouter.csproj" />
+    </ItemGroup>
+    <PropertyGroup>
+        <PackageId>TreeRouter.WebSocket.Server</PackageId>
+        <Title>Websockets with Tree Router</Title>
+        <VersionPrefix>0.9.7</VersionPrefix>
+        <VersionSuffix />
+        <PackageProjectUrl>https://github.com/AccentuateMe/TreeRouter</PackageProjectUrl>
+        <Description>WebSockets with TreeRouter convenience</Description>
+        <PackageTags>router;dotnet standard;modular</PackageTags>
+        <Copyright>Copyright 2018 Accentuate.Me LLC - MIT</Copyright>
+        <IncludeSource>true</IncludeSource>
+    </PropertyGroup>
 </Project>

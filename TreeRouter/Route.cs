@@ -8,11 +8,10 @@ namespace TreeRouter
 {
 	public class Route
 	{
-		
 		private static readonly Regex plainVar = new Regex(@"\s*{\s*(\w+)\s*}\s*");
 		private static readonly Regex optionalVar = new Regex(@"\s*{\s*(\w+)\s*\?\s*}\s*");
 		private static readonly Regex greedyVar = new Regex(@"\s*{\s*(\w+)\s*\*\s*}\s*");
-		
+
 		public List<RouteToken> Tokens { get; private set; }
 		public int LiteralTokenCount { get; private set; }
 		public Constraints Constraints { get; set; }
@@ -31,9 +30,10 @@ namespace TreeRouter
 				ClassHandler = options.ClassHandler,
 				Methods = options.Methods
 			};
-		
+
 
 		private string _path;
+
 		public string Path
 		{
 			get => _path;
@@ -49,7 +49,7 @@ namespace TreeRouter
 				{
 					i++;
 					var token = new RouteToken();
-				
+
 					var match = plainVar.Match(part);
 					if (match.Success)
 					{
@@ -84,7 +84,7 @@ namespace TreeRouter
 						Tokens.Add(token);
 						continue;
 					}
-				
+
 					if (optional)
 						PathError("Cannot have required segments after optional ones", value);
 					LiteralTokenCount++;
@@ -93,7 +93,7 @@ namespace TreeRouter
 				}
 			}
 		}
-		
+
 
 		private void PathError(string msg, string path) =>
 			throw new ArgumentException(msg + "Route: " + path);
@@ -112,19 +112,19 @@ namespace TreeRouter
 					rd[token.Name] = token.Greedy ? string.Join("/", parts.Skip(index)) : part;
 					if (token.Greedy) return rd;
 				}
+
 				index++;
 			}
+
 			return rd;
 		}
-		
 	}
 
-	public class Route<TController> : Route 
+	public class Route<TController> : Route
 	{
 		public Route()
 		{
 			ClassHandler = typeof(TController);
 		}
 	}
-	
 }

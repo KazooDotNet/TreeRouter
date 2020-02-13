@@ -9,7 +9,7 @@ namespace WebAndSocketTester
 		{
 			return ReplyMessage(new MessageResponse(Context.Request)
 			{
-				Data = new MessageData { {"Echo", RouteVars.Get<string>("echo") } }
+				Data = new MessageData {{"Echo", RouteVars.Get<string>("echo")}}
 			});
 		}
 
@@ -20,7 +20,7 @@ namespace WebAndSocketTester
 
 		public Task TriggerWelcome()
 		{
-			return ReplyMessage(new MessageResponse { Path = "/welcome" });
+			return ReplyMessage(new MessageResponse {Path = "/welcome"});
 		}
 	}
 }

@@ -8,7 +8,7 @@ namespace TreeRouter
 		public RequestDictionary()
 		{
 		}
-		
+
 		public RequestDictionary(IDictionary<string, string> dict) : base(dict)
 		{
 		}

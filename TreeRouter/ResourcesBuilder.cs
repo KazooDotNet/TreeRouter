@@ -2,14 +2,13 @@
 
 namespace TreeRouter
 {
-
 	public class ResourcesBuilder<T> : BaseBuilder where T : IController
 	{
 		private readonly RouteBuilder _rb;
-		
-		public ResourcesBuilder(string prefix, RouteOptions options) 
+
+		public ResourcesBuilder(string prefix, RouteOptions options)
 		{
-			RouteOptions = Utils.MergeOptions(options, new RouteOptions { ClassHandler = typeof(T) });
+			RouteOptions = Utils.MergeOptions(options, new RouteOptions {ClassHandler = typeof(T)});
 			RouteOptions.Path = Utils.JoinPath(options.Path, prefix);
 			_rb = new RouteBuilder(RouteOptions);
 			Children.Add(_rb);
@@ -24,8 +23,8 @@ namespace TreeRouter
 			_rb.Options("/{id}").Action("Options");
 			_rb.Options("/new").Action("Options");
 			_rb.Options("/{id}/edit").Action("Options");
-		} 
-		
+		}
+
 		public ResourcesBuilder<T> OnMember(Action<RouteBuilder> map, string pathName)
 		{
 			var options = Utils.MergeOptions(RouteOptions);

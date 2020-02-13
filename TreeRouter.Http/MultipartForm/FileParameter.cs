@@ -4,7 +4,6 @@ namespace TreeRouter.Http.MultipartForm
 {
 	public class FileParameter : IUploadFileParameter
 	{
-
 		public FileParameter(FileStream file)
 		{
 			File = file;

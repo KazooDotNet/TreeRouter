@@ -5,7 +5,6 @@ namespace TreeRouter
 {
 	public class IntermediateBuilder : BaseBuilder
 	{
-		
 		protected IntermediateBuilder(RouteOptions options) : base(options)
 		{
 		}
@@ -18,7 +17,7 @@ namespace TreeRouter
 			Children.Add(bb);
 			return bb;
 		}
-		
+
 		public IntermediateBuilder Action(Func<Request, Task> action)
 		{
 			RouteOptions.ActionHandler = action;
@@ -30,12 +29,12 @@ namespace TreeRouter
 			RouteOptions.Methods = methods;
 			return this;
 		}
-		
+
 		public IntermediateBuilder Action(string action) =>
 			Defaults(new Defaults {{"action", action}});
-		
 
-		public IntermediateBuilder Defaults(Defaults defaults) 
+
+		public IntermediateBuilder Defaults(Defaults defaults)
 		{
 			RouteOptions.Defaults = Utils.MergeDefaults(RouteOptions.Defaults, defaults);
 			return this;
@@ -53,6 +52,5 @@ namespace TreeRouter
 			RouteOptions.Constraints = Utils.MergeConstraints(RouteOptions.Constraints, constraints);
 			return this;
 		}
-
 	}
 }

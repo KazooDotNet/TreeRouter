@@ -4,9 +4,8 @@ namespace TreeRouter
 {
 	public class RouteBuilder : IntermediateBuilder
 	{
-
 		public RouteBuilder(RouteOptions options) : base(options)
-		{	
+		{
 		}
 
 		public RouteBuilder(string prefix) : this(new RouteOptions {Path = prefix})
@@ -16,12 +15,12 @@ namespace TreeRouter
 		public RouteBuilder Map(RouteOptions options, Action<RouteBuilder> map)
 		{
 			var opts = Utils.MergeOptions(RouteOptions, options);
-			var rb = new RouteBuilder(opts) { RouteOptions = { Path = Utils.JoinPath(RouteOptions.Path, options.Path) } };
+			var rb = new RouteBuilder(opts) {RouteOptions = {Path = Utils.JoinPath(RouteOptions.Path, options.Path)}};
 			Children.Add(rb);
 			map.Invoke(rb);
 			return rb;
 		}
-		
+
 		public RouteBuilder Map(string path, Action<RouteBuilder> map, RouteOptions options = null)
 		{
 			if (options == null) options = new RouteOptions();
@@ -29,7 +28,8 @@ namespace TreeRouter
 			return Map(options, map);
 		}
 
-		public RouteBuilder Map<T>(string path, Action<RouteBuilder> map, RouteOptions options = null) where T : IController
+		public RouteBuilder Map<T>(string path, Action<RouteBuilder> map, RouteOptions options = null)
+			where T : IController
 		{
 			if (options == null) options = new RouteOptions();
 			options.ClassHandler = typeof(T);
@@ -39,9 +39,9 @@ namespace TreeRouter
 		public RouteBuilder Map(Action<RouteBuilder> map) => Map(null, map);
 
 		public RouteBuilder Map<T>(Action<RouteBuilder> map) where T : IController =>
-			Map(new RouteOptions { ClassHandler = typeof(T) }, map);
-		
-		
+			Map(new RouteOptions {ClassHandler = typeof(T)}, map);
+
+
 		public MethodBuilder Get(string path) => NewBuilder(path, "get");
 		public MethodBuilder Get<T>(string path) where T : IController => NewBuilder(path, "get", typeof(T));
 		public MethodBuilder Post(string path) => NewBuilder(path, "post");
@@ -54,12 +54,12 @@ namespace TreeRouter
 		public MethodBuilder Delete<T>(string path) where T : IController => NewBuilder(path, "delete", typeof(T));
 		public MethodBuilder Options(string path) => NewBuilder(path, "options");
 		public MethodBuilder Options<T>(string path) where T : IController => NewBuilder(path, "options", typeof(T));
-		
+
 		protected MethodBuilder NewBuilder(string path, string method, Type handler = null)
 		{
 			var mb = new MethodBuilder(RouteOptions)
 			{
-				RouteOptions = { Path = Utils.JoinPath(RouteOptions.Path, path), Methods = new[] {method} }
+				RouteOptions = {Path = Utils.JoinPath(RouteOptions.Path, path), Methods = new[] {method}}
 			};
 			mb.RouteOptions.ClassHandler = handler ?? RouteOptions.ClassHandler;
 			Children.Add(mb);
@@ -79,7 +79,5 @@ namespace TreeRouter
 			Children.Add(rb);
 			return rb;
 		}
-
 	}
-	
 }

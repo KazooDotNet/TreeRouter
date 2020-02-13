@@ -9,18 +9,18 @@ namespace Tests
 		[Fact]
 		public void Resources()
 		{
-			_router.Map( r => r.Resources<ResourcesController>("things") );
-			var memberMethods = new Dictionary<string,string>
+			_router.Map(r => r.Resources<ResourcesController>("things"));
+			var memberMethods = new Dictionary<string, string>
 			{
-				{ "get", "Show" },
-				{ "put", "Update" },
-				{ "patch", "Update" },
-				{ "delete", "Delete" }
+				{"get", "Show"},
+				{"put", "Update"},
+				{"patch", "Update"},
+				{"delete", "Delete"}
 			};
-			var collectionMethods = new Dictionary<string,string>
+			var collectionMethods = new Dictionary<string, string>
 			{
-				{ "get", "Index" },
-				{ "post", "Create" }
+				{"get", "Index"},
+				{"post", "Create"}
 			};
 			string response;
 			foreach (var pair in memberMethods)
@@ -28,7 +28,8 @@ namespace Tests
 				response = DispatchAndRead("/things/id", pair.Key);
 				Assert.Equal(pair.Value, response);
 			}
-			foreach (var pair  in collectionMethods)
+
+			foreach (var pair in collectionMethods)
 			{
 				response = DispatchAndRead("/things", pair.Key);
 				Assert.Equal(pair.Value, response);
@@ -41,7 +42,7 @@ namespace Tests
 		[Fact]
 		public void Resource()
 		{
-			_router.Map( r => r.Resource<ResourcesController>("things") );
+			_router.Map(r => r.Resource<ResourcesController>("things"));
 			Assert.Equal("Show", DispatchAndRead("/things", "get"));
 			Assert.Equal("Edit", DispatchAndRead("/things/edit", "get"));
 			Assert.Equal("New", DispatchAndRead("/things/new", "get"));
@@ -74,7 +75,6 @@ namespace Tests
 			Assert.True(result.Found);
 			Assert.Equal("1", result.Vars["thingId"]);
 			Assert.Equal("2", result.Vars["id"]);
-			
 		}
 
 		[Fact]
@@ -99,13 +99,14 @@ namespace Tests
 		[Fact]
 		public void MapWithController()
 		{
-			_router.Map(r => { 
+			_router.Map(r =>
+			{
 				r.Map<ResourcesController>(rc =>
 				{
 					rc.Get("/test").Action("Show");
 					rc.Get("/another").Action("Show");
 					rc.Get("/{blah*}").Action("Show");
-				}); 
+				});
 			});
 			var result = _router.MatchPath("/test", "get");
 			Assert.True(result.Found);
@@ -116,8 +117,6 @@ namespace Tests
 			result = _router.MatchPath("/sing/song", "get");
 			Assert.True(result.Found);
 			Assert.Equal(result.Route.ClassHandler, typeof(ResourcesController));
-			
 		}
-		
 	}
 }

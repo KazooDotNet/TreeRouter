@@ -13,15 +13,16 @@ namespace TreeRouter.Http
 	{
 		public bool Cancel { get; set; }
 	}
-	
+
 	public abstract class Controller : IController
 	{
-		
-		public readonly EventEmitter<Controller> BeforeDispatch = 
-			new EventEmitter<Controller>(); 
-		public readonly EventEmitter<Controller, ControllerArgs> BeforeAction = 
+		public readonly EventEmitter<Controller> BeforeDispatch =
+			new EventEmitter<Controller>();
+
+		public readonly EventEmitter<Controller, ControllerArgs> BeforeAction =
 			new EventEmitter<Controller, ControllerArgs>();
-		public readonly EventEmitter<Controller> AfterAction = 
+
+		public readonly EventEmitter<Controller> AfterAction =
 			new EventEmitter<Controller>();
 
 		protected HttpContext Context { get; set; }
@@ -32,7 +33,7 @@ namespace TreeRouter.Http
 		protected RequestDictionary RouteVars { get; private set; }
 
 		private NestedParams _nestedParams;
-		
+
 		protected bool IsForm => _nestedParams.IsForm;
 		protected bool IsJson => _nestedParams.IsJson;
 		protected NestedDictionary Form => _nestedParams.Form;
@@ -44,22 +45,22 @@ namespace TreeRouter.Http
 		{
 			PropertyNamingPolicy = JsonNamingPolicy.CamelCase
 		};
-		
+
 		protected string RequestMethod
 		{
 			get
 			{
 				var method = Request.Method.ToLower();
 				if (method == "post" && IsForm && Form.ContainsKey("_method") &&
-						!string.IsNullOrEmpty(Form["_method"].ToString()))
+				    !string.IsNullOrEmpty(Form["_method"].ToString()))
 					return Request.Form["_method"].ToString().ToLower();
 				return Request.Method.ToLower();
 			}
 		}
 
 		protected bool AcceptsJson => Request.Headers.ContainsKey("Accept") &&
-									  Request.Headers["Accept"].ToString().Contains("json");
-		
+		                              Request.Headers["Accept"].ToString().Contains("json");
+
 
 		public async Task Route(Request routerRequest)
 		{
@@ -79,7 +80,7 @@ namespace TreeRouter.Http
 		{
 			Context = context;
 			_nestedParams = await context.SetupNestedParams();
-			
+
 			if (RouteVars != null)
 			{
 				if (_nestedParams.ExtraParams == null)
@@ -87,13 +88,13 @@ namespace TreeRouter.Http
 				foreach (var pair in RouteVars)
 					_nestedParams.ExtraParams.Set(pair.Key, pair.Value);
 			}
-			
+
 			await BeforeDispatch.Invoke(this);
-			
+
 			var ca = new ControllerArgs();
 			await BeforeAction.Invoke(this, ca);
 			if (ca.Cancel) return;
-			
+
 			var mParams = method.GetParameters();
 			// If no parameters are passed, try to infer them.
 			if (list.Length == 0 && mParams.Length > 0)
@@ -127,11 +128,11 @@ namespace TreeRouter.Http
 				Response.ContentType = "text/html; charset=utf-8";
 
 			await AfterAction.Invoke(this);
-			
+
 			if (SessionAvailable)
 				await Session.CommitAsync();
 
-			object finalResponse; 
+			object finalResponse;
 			if (response is HttpResponse http)
 			{
 				foreach (var pair in http.Headers)
@@ -143,7 +144,7 @@ namespace TreeRouter.Http
 			{
 				finalResponse = response;
 			}
-			
+
 			switch (finalResponse)
 			{
 				case Stream stream:
@@ -158,7 +159,7 @@ namespace TreeRouter.Http
 					await Response.WriteAsync(str);
 					break;
 				case byte[] bytea:
-					Response.Body = new MemoryStream(bytea); 
+					Response.Body = new MemoryStream(bytea);
 					break;
 				case null:
 					// Do nothing
@@ -168,6 +169,7 @@ namespace TreeRouter.Http
 					throw new Exception(
 						$"Unknown response type from controller: {response.GetType().FullName} (in {GetType().FullName})");
 			}
+
 			await CleanUp();
 		}
 
@@ -200,6 +202,5 @@ namespace TreeRouter.Http
 			resp.Headers["Content-Type"] = "application/json";
 			return resp;
 		}
-		
 	}
 }

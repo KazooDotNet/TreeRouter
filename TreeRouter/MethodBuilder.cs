@@ -5,8 +5,13 @@
 		public MethodBuilder(RouteOptions options) : base(options)
 		{
 		}
-		
-		private new void Methods(string[] methods) {}
-		private new void Path(string path) {}
+
+		private new void Methods(string[] methods)
+		{
+		}
+
+		private new void Path(string path)
+		{
+		}
 	}
 }

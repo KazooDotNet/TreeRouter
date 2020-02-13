@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 
 namespace WebAndSocketTester
 {
-	
 	public class ErrorCatcher
 	{
 		private readonly RequestDelegate _next;
@@ -27,6 +26,6 @@ namespace WebAndSocketTester
 			{
 				_logger.LogError(e.ToString());
 			}
-	}
+		}
 	}
 }

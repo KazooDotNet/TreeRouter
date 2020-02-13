@@ -6,7 +6,6 @@ namespace Tests
 {
 	public class ClockTests
 	{
-		
 		[Fact]
 		public void FreezesAndIncrements()
 		{

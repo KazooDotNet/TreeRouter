@@ -7,7 +7,8 @@ namespace TreeRouter.Http.MultipartForm
 {
 	internal static class Extensions
 	{
-		public static async Task<IReadOnlyList<byte>> BufferReadAsync(this Stream stream, byte[] buffer, CancellationToken token)
+		public static async Task<IReadOnlyList<byte>> BufferReadAsync(this Stream stream, byte[] buffer,
+			CancellationToken token)
 		{
 			var totalRead = await stream.ReadAsync(buffer, 0, buffer.Length, token);
 			if (totalRead == 0)

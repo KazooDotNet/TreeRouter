@@ -28,14 +28,13 @@ namespace TreeRouter.WebSocket
 	{
 		public string MessageType { get; set; }
 		public MessageData Data { get; set; }
-		
 	}
 
 	public class MessageRequest : Message
 	{
 		public MessageRequest(string id = null) =>
 			Id = id ?? Guid.NewGuid().ToString();
-    
+
 		public string Id { get; set; }
 		public string Path { get; set; }
 		public string Method { get; set; }

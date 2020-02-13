@@ -9,7 +9,7 @@ namespace TreeRouter.Http.MultipartForm
 		private readonly IReadOnlyList<T> _list;
 		private readonly int _start;
 		private readonly int _end;
-		
+
 		public Span(IReadOnlyList<T> list, int start, int end)
 		{
 			_list = list;
@@ -24,6 +24,7 @@ namespace TreeRouter.Http.MultipartForm
 			if (_start > _end)
 				throw new ArgumentException("Start cannot be greater than end");
 		}
+
 		public IEnumerator<T> GetEnumerator()
 		{
 			for (var i = _start; i <= _end; i++)

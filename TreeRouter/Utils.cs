@@ -16,7 +16,7 @@ namespace TreeRouter
 			parts.RemoveAll(p => p == null);
 			return string.Join("/", parts.Select(p => p.Trim('/').Trim()));
 		}
-		
+
 		public static RouteOptions MergeOptions(params RouteOptions[] vars)
 		{
 			var ro = new RouteOptions();
@@ -29,10 +29,11 @@ namespace TreeRouter
 				ro.Defaults = MergeDefaults(ro.Defaults, option.Defaults);
 				ro.Constraints = MergeConstraints(ro.Constraints, option.Constraints);
 			}
+
 			return ro;
 		}
-		
-		
+
+
 		public static string ComputeHash(object instance)
 		{
 			var hasher = new MD5CryptoServiceProvider();
@@ -40,23 +41,23 @@ namespace TreeRouter
 			hasher.ComputeHash(bytes);
 			return Convert.ToBase64String(hasher.Hash);
 		}
-		
-		public static Defaults MergeDefaults(params Defaults[] list) 
+
+		public static Defaults MergeDefaults(params Defaults[] list)
 		{
 			var merged = new Defaults();
 			foreach (var t in list)
 				t?.ToList().ForEach(pair => merged[pair.Key] = pair.Value);
 			return merged;
 		}
-		
-		public static Constraints MergeConstraints(params Constraints[] list) 
+
+		public static Constraints MergeConstraints(params Constraints[] list)
 		{
 			var merged = new Constraints();
 			foreach (var t in list)
 				t?.ToList().ForEach(pair => merged[pair.Key] = pair.Value);
 			return merged;
 		}
-		
+
 		public static async Task<object> ExtractRefTask(object obj)
 		{
 			try
@@ -66,9 +67,9 @@ namespace TreeRouter
 					case Task task:
 						await task;
 						return task.GetType().GetProperty("Result")?.GetValue(task);
-					default: 
+					default:
 						return obj;
-				}	
+				}
 			}
 			catch (AggregateException e)
 			{
@@ -83,14 +84,14 @@ namespace TreeRouter
 			try
 			{
 				if (obj is Task task)
-					await task;	
+					await task;
 			}
 			catch (AggregateException e)
 			{
 				ExceptionDispatchInfo.Capture(e.InnerExceptions.First()).Throw();
 			}
 		}
-		
+
 
 		public static async Task<T?> ExtractValTask<T>(object obj) where T : struct
 		{
@@ -99,9 +100,11 @@ namespace TreeRouter
 				switch (obj)
 				{
 					case Task<T> objTask: return await objTask;
-					case Task task:  await task; return null;
+					case Task task:
+						await task;
+						return null;
 					default: return (T?) obj;
-				}	
+				}
 			}
 			catch (AggregateException e)
 			{
@@ -110,6 +113,5 @@ namespace TreeRouter
 
 			return default;
 		}
-		
 	}
 }

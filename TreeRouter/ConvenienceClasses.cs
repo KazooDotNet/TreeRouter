@@ -9,7 +9,6 @@ namespace TreeRouter
 	}
 
 	public class Constraints : Dictionary<string, Regex>
-	{	
+	{
 	}
-	
 }

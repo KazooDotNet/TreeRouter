@@ -30,26 +30,26 @@ namespace Tests
 			services.AddSingleton<IRouter>(_router);
 			_services = services.BuildServiceProvider();
 		}
-		
-		protected HttpContext MakeContext(string path, string method, Stream requestStream = null, 
+
+		protected HttpContext MakeContext(string path, string method, Stream requestStream = null,
 			Action<Mock<HttpContext>> setup = null, Action<Mock<HttpRequest>> requestSetup = null)
 		{
-			var request = new Mock<HttpRequest> { CallBase = true };
+			var request = new Mock<HttpRequest> {CallBase = true};
 			request.Setup(x => x.Path).Returns(path);
 			request.Setup(x => x.Method).Returns(method);
 			requestSetup?.Invoke(request);
 			if (requestStream == null)
 				requestStream = new MemoryStream();
 			request.Setup(x => x.Body).Returns(requestStream);
-			
-			
-			var response = new Mock<HttpResponse>  { CallBase = true };
+
+
+			var response = new Mock<HttpResponse> {CallBase = true};
 			var responseStream = new MemoryStream();
 			response.Setup(x => x.Body).Returns(responseStream);
 			var headers = new HeaderDictionary();
 			response.Setup(x => x.Headers).Returns(headers);
 
-			var context = new Mock<HttpContext>  { CallBase = true };
+			var context = new Mock<HttpContext> {CallBase = true};
 			context.Setup(x => x.Request).Returns(request.Object);
 			context.Setup(x => x.Response).Returns(response.Object);
 			context.Setup(x => x.Items).Returns(new Dictionary<object, object>());
@@ -70,7 +70,7 @@ namespace Tests
 			{
 				ExceptionDispatchInfo.Capture(e.InnerExceptions.First()).Throw();
 			}
-			
+
 			var memStream = context.Response.Body;
 			memStream.Position = 0;
 			return new StreamReader(memStream).ReadToEnd();

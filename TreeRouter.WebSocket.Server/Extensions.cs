@@ -12,12 +12,13 @@ namespace TreeRouter.WebSocket
 		public static IServiceCollection AddWebSockets(this IServiceCollection services) =>
 			services.AddWebSockets(new[]
 			{
-				Assembly.GetEntryAssembly(), 
+				Assembly.GetEntryAssembly(),
 				Assembly.GetExecutingAssembly(),
 				Assembly.GetCallingAssembly()
 			});
 
-		public static IServiceCollection AddWebSockets(this IServiceCollection services, IEnumerable<Assembly> assemblies)
+		public static IServiceCollection AddWebSockets(this IServiceCollection services,
+			IEnumerable<Assembly> assemblies)
 		{
 			services.AddSingleton<ConnectionManager>();
 			var hType = typeof(IHandler);
@@ -29,7 +30,8 @@ namespace TreeRouter.WebSocket
 		}
 
 		public static IApplicationBuilder MapWebSockets(this IApplicationBuilder app, PathString path,
-			string[] subProtocols, Action<RouteBuilder> action) => MapWebSockets<Handler>(app, path, subProtocols, action);
+			string[] subProtocols, Action<RouteBuilder> action) =>
+			MapWebSockets<Handler>(app, path, subProtocols, action);
 
 		public static IApplicationBuilder MapWebSockets<THandler>(this IApplicationBuilder app, PathString path,
 			string[] subProtocols, Action<RouteBuilder> action) where THandler : IHandler
@@ -37,15 +39,14 @@ namespace TreeRouter.WebSocket
 			app.UseWebSockets();
 			var handler = app.ApplicationServices.GetService<THandler>();
 			if (handler == null)
-				throw new Exception("Handler not found. Have you called `AddWebSockets` on your service collection setup?");
+				throw new Exception(
+					"Handler not found. Have you called `AddWebSockets` on your service collection setup?");
 			var router = app.ApplicationServices.GetService<IRouter>();
 			router.Map(action);
 			handler.Router = router;
 			return app.Map(path, _app =>
 				_app.UseMiddleware<UpgradeConnection>(handler, subProtocols));
 		}
-		
-		
 
 
 		// TODO: implement WebSocket handler for RouteBuilder

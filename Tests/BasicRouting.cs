@@ -8,12 +8,12 @@ namespace Tests
 	public class BasicRouting
 	{
 		private readonly Router _router;
-		
+
 		public BasicRouting()
 		{
 			_router = new Router();
 		}
-		
+
 		[Fact]
 		public void FindsLiteralRoute()
 		{
@@ -27,7 +27,7 @@ namespace Tests
 		[Fact]
 		public void FindsRootRoute()
 		{
-			_router.Map( r => r.Get("/").NullAction() );
+			_router.Map(r => r.Get("/").NullAction());
 			var result = _router.MatchPath("/", "get");
 			Assert.True(result.Found);
 			Assert.NotNull(result.Route);
@@ -36,7 +36,7 @@ namespace Tests
 		[Fact]
 		public void ExtractsVars()
 		{
-			_router.Map(r => r.Delete("/stuff/{things}").NullAction() );
+			_router.Map(r => r.Delete("/stuff/{things}").NullAction());
 			var result = _router.MatchPath("/stuff/3", "delete");
 			Assert.Equal("3", result.Vars["things"]);
 			Assert.NotNull(result.Route);
@@ -63,12 +63,12 @@ namespace Tests
 		[Fact]
 		public void ExtractsOptionalVars()
 		{
-			_router.Map(r => r.Put("/stuff/{things?}").NullAction() );
-			
+			_router.Map(r => r.Put("/stuff/{things?}").NullAction());
+
 			var result = _router.MatchPath("/stuff", "put");
 			Assert.True(result.Found);
 			Assert.False(result.Vars.ContainsKey("things"));
-			
+
 			result = _router.MatchPath("/stuff/3", "put");
 			Assert.True(result.Found);
 			Assert.Equal("3", result.Vars["things"]);
@@ -78,16 +78,16 @@ namespace Tests
 		[Fact]
 		public void SetsDefaults()
 		{
-			_router.Map(r => 
+			_router.Map(r =>
 				r.Patch("/stuff/{ things? }")
-				.Defaults(new Defaults {{ "things", "4"}})
-				.NullAction()
+					.Defaults(new Defaults {{"things", "4"}})
+					.NullAction()
 			);
-			
+
 			var result = _router.MatchPath("/stuff", "patch");
 			Assert.True(result.Found);
 			Assert.Equal("4", result.Vars["things"]);
-			
+
 			result = _router.MatchPath("/stuff/50", "patch");
 			Assert.True(result.Found);
 			Assert.Equal("50", result.Vars["things"]);
@@ -97,9 +97,9 @@ namespace Tests
 		[Fact]
 		public void SetsLambdaDefaults()
 		{
-			_router.Map(r => 
+			_router.Map(r =>
 				r.Patch("/stuff/{ things? }")
-					.Defaults( d => d["things"] = "4" )
+					.Defaults(d => d["things"] = "4")
 					.NullAction()
 			);
 			var result = _router.MatchPath("/stuff", "patch");
@@ -110,11 +110,11 @@ namespace Tests
 		public void MatchesSplats()
 		{
 			_router.Map(r => r.Post("/stuff/{ splat* }").NullAction());
-			
+
 			var result = _router.MatchPath("/stuff", "post");
 			Assert.True(result.Found);
 			Assert.False(result.Vars.ContainsKey("splat"));
-			
+
 			result = _router.MatchPath("/stuff/and/things", "post");
 			Assert.True(result.Found);
 			Assert.Equal("and/things", result.Vars["splat"]);
@@ -124,8 +124,8 @@ namespace Tests
 		[Fact]
 		public void MapsWithPrefix()
 		{
-			_router.Map("/prefix", r => 
-				r.Get("/things/{ things ? }").NullAction() );
+			_router.Map("/prefix", r =>
+				r.Get("/things/{ things ? }").NullAction());
 			var result = _router.MatchPath("/prefix/things/3", "get");
 			Assert.True(result.Found);
 			Assert.NotNull(result.Route);
@@ -138,6 +138,5 @@ namespace Tests
 			_router.Map(r => { r.Get("/stuff").NullAction(); });
 			Assert.Equal(_router.AllRoutes().Count(), 1);
 		}
-		
 	}
 }

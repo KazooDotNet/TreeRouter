@@ -10,106 +10,108 @@ using TreeRouter.Errors;
 
 namespace TreeRouter.WebSocket
 {
-  public class UpgradeConnection: IController
-  {
-    private readonly RequestDelegate _next;
-    private IHandler Handler { get; }
-    private string[] Protocols { get; }
+	public class UpgradeConnection : IController
+	{
+		private readonly RequestDelegate _next;
+		private IHandler Handler { get; }
+		private string[] Protocols { get; }
 
-    public UpgradeConnection(RequestDelegate next, IHandler webSocketHandler, string[] protocols)
-    {
-      _next = next;
-      Handler = webSocketHandler;
-      Protocols = protocols;
-    }
+		public UpgradeConnection(RequestDelegate next, IHandler webSocketHandler, string[] protocols)
+		{
+			_next = next;
+			Handler = webSocketHandler;
+			Protocols = protocols;
+		}
 
-    public async Task Invoke(HttpContext context)
-    {
-      if (!context.WebSockets.IsWebSocketRequest)
-      {
-        if (_next != null) await _next(context);
-        return;
-      }
+		public async Task Invoke(HttpContext context)
+		{
+			if (!context.WebSockets.IsWebSocketRequest)
+			{
+				if (_next != null) await _next(context);
+				return;
+			}
 
-      var selectedProtocol = GetProtocol(
-        context.Request.Headers["Sec-WebSocket-Protocol"]);
+			var selectedProtocol = GetProtocol(
+				context.Request.Headers["Sec-WebSocket-Protocol"]);
 
-      var socket = await (selectedProtocol == null
-        ? context.WebSockets.AcceptWebSocketAsync()
-        : context.WebSockets.AcceptWebSocketAsync(selectedProtocol));
+			var socket = await (selectedProtocol == null
+				? context.WebSockets.AcceptWebSocketAsync()
+				: context.WebSockets.AcceptWebSocketAsync(selectedProtocol));
 
-      var socker = new WebSocker(socket, context);
+			var socker = new WebSocker(socket, context);
 
-      await Handler.OnConnected(socker);
+			await Handler.OnConnected(socker);
 
-      await Receive(socker, async (result, message) =>
-      {
-        if (result.MessageType == WebSocketMessageType.Close)
-        {
-          await Handler.OnDisconnected(socker);
-          return;
-        }
-        var proto = selectedProtocol ?? Protocols[0];
-        var passedMessage = new HandlerMessage
-        {
-          Socket = socker, SocketResult = result, Serialized = message, Subprotocol = proto,
-          BasePath = context.Request.Path, HttpContext = context
-        };
-        await Handler.Route(new Request {Context = passedMessage});
-      });
-    }
+			await Receive(socker, async (result, message) =>
+			{
+				if (result.MessageType == WebSocketMessageType.Close)
+				{
+					await Handler.OnDisconnected(socker);
+					return;
+				}
 
-    private string GetProtocol(string[] protocols)
-    {
-      if (Protocols == null || protocols == null)
-        return null;
+				var proto = selectedProtocol ?? Protocols[0];
+				var passedMessage = new HandlerMessage
+				{
+					Socket = socker, SocketResult = result, Serialized = message, Subprotocol = proto,
+					BasePath = context.Request.Path, HttpContext = context
+				};
+				await Handler.Route(new Request {Context = passedMessage});
+			});
+		}
 
-      string selectedProtocol = null;
-      foreach (var iprotocol in protocols)
-      {
-        var protocols2 = iprotocol.Split(',');
-        foreach (var protocol in protocols2)
-        {
-          var p = protocol.Trim();
-          if (!Protocols.Contains(p)) continue;
-          selectedProtocol = p;
-          break;
-        }
-      }
+		private string GetProtocol(string[] protocols)
+		{
+			if (Protocols == null || protocols == null)
+				return null;
 
-      return selectedProtocol ?? Protocols[0];
-    }
+			string selectedProtocol = null;
+			foreach (var iprotocol in protocols)
+			{
+				var protocols2 = iprotocol.Split(',');
+				foreach (var protocol in protocols2)
+				{
+					var p = protocol.Trim();
+					if (!Protocols.Contains(p)) continue;
+					selectedProtocol = p;
+					break;
+				}
+			}
 
-    private static async Task Receive(System.Net.WebSockets.WebSocket socket, Action<WebSocketReceiveResult, string> handleMessage)
-    {
-      while (socket.State == WebSocketState.Open)
-      {
-        var buffer = new ArraySegment<byte>(new byte[1024 * 4]);
-        string message;
-        WebSocketReceiveResult result;
-        using (var ms = new MemoryStream())
-        {
-          do
-          {
-            result = await socket.ReceiveAsync(buffer, CancellationToken.None);
-            ms.Write(buffer.Array, buffer.Offset, result.Count);
-          } while (!result.EndOfMessage);
+			return selectedProtocol ?? Protocols[0];
+		}
 
-          ms.Seek(0, SeekOrigin.Begin);
+		private static async Task Receive(System.Net.WebSockets.WebSocket socket,
+			Action<WebSocketReceiveResult, string> handleMessage)
+		{
+			while (socket.State == WebSocketState.Open)
+			{
+				var buffer = new ArraySegment<byte>(new byte[1024 * 4]);
+				string message;
+				WebSocketReceiveResult result;
+				using (var ms = new MemoryStream())
+				{
+					do
+					{
+						result = await socket.ReceiveAsync(buffer, CancellationToken.None);
+						ms.Write(buffer.Array, buffer.Offset, result.Count);
+					} while (!result.EndOfMessage);
 
-          using (var reader = new StreamReader(ms, Encoding.UTF8))
-          {
-            message = await reader.ReadToEndAsync();
-          }
-        }
+					ms.Seek(0, SeekOrigin.Begin);
 
-        handleMessage(result, message);
-      }
-    }
+					using (var reader = new StreamReader(ms, Encoding.UTF8))
+					{
+						message = await reader.ReadToEndAsync();
+					}
+				}
 
-    public Task Route(Request routerRequest)
-    {
-      throw new NotImplementedException();
-    }
-  }
+				handleMessage(result, message);
+			}
+		}
+
+		public Task Route(Request routerRequest)
+		{
+			throw new NotImplementedException();
+		}
+	}
 }

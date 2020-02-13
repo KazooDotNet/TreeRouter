@@ -7,7 +7,8 @@ namespace TreeRouter.WebSocket
 {
 	public class ConnectionManager
 	{
-		private readonly ConcurrentDictionary<string, WebSocker> Sockets = new ConcurrentDictionary<string, WebSocker>();
+		private readonly ConcurrentDictionary<string, WebSocker>
+			Sockets = new ConcurrentDictionary<string, WebSocker>();
 
 		public WebSocker GetSocketById(string id)
 		{

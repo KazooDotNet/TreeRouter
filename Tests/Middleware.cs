@@ -25,8 +25,9 @@ namespace Tests
 		public async Task KeepsScopeSeparate()
 		{
 			var router = _provider.GetService<IRouter>();
-			router.Map( r => r.Get<ScopeController>("/test") );
-			var middleware = ActivatorUtilities.CreateInstance<TreeRouter.Http.Middleware>(_provider, router, _emptyNext);
+			router.Map(r => r.Get<ScopeController>("/test"));
+			var middleware =
+				ActivatorUtilities.CreateInstance<TreeRouter.Http.Middleware>(_provider, router, _emptyNext);
 			var http = new DefaultHttpContext();
 			http.Request.Path = "/test";
 			await middleware.Invoke(http, _provider.GetService<IServiceScopeFactory>());
@@ -46,8 +47,6 @@ namespace Tests
 			s.Value = value;
 			return Task.CompletedTask;
 		};
-
-
 	}
 
 	public class SimpleService
@@ -58,7 +57,7 @@ namespace Tests
 	public class NonscopedMiddleware
 	{
 		private RequestDelegate _next;
-		
+
 		public NonscopedMiddleware(RequestDelegate next)
 		{
 			_next = next;
@@ -68,6 +67,5 @@ namespace Tests
 		{
 			await _next.Invoke(context);
 		}
-		
 	}
 }

@@ -18,7 +18,7 @@ namespace Tests.Controllers
 	{
 		public string String { get; set; }
 	}
-	
+
 	public class ConvertRouter : Controller
 	{
 		public HttpResponse Int32(int id) => SendJson(id);

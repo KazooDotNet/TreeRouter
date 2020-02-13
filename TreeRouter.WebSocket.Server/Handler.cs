@@ -15,8 +15,13 @@ namespace TreeRouter.WebSocket
 	{
 		Task OnConnected(WebSocker socket);
 		Task OnDisconnected(WebSocker socket);
-		Task SendMessage(WebSocker socket, MessageResponse message, CancellationToken token = default(CancellationToken));
-		Task SendMessage(string socketId, MessageResponse message, CancellationToken token = default(CancellationToken));
+
+		Task SendMessage(WebSocker socket, MessageResponse message,
+			CancellationToken token = default(CancellationToken));
+
+		Task SendMessage(string socketId, MessageResponse message,
+			CancellationToken token = default(CancellationToken));
+
 		Task SendMessageToAll(MessageResponse message, CancellationToken token = default(CancellationToken));
 		IRouter Router { set; }
 	}
@@ -33,13 +38,14 @@ namespace TreeRouter.WebSocket
 			_scopeFactory = scopeFactory;
 		}
 
-		public virtual Task OnConnected(WebSocker socket) {
+		public virtual Task OnConnected(WebSocker socket)
+		{
 			ConnectionManager.AddSocket(socket);
 			return SendMessage(socket, new MessageResponse
-            {
-                MessageType = MessageType.ConnectionEvent,
-                Data = new MessageData { ["SocketId"] = socket.Id }
-            });
+			{
+				MessageType = MessageType.ConnectionEvent,
+				Data = new MessageData {["SocketId"] = socket.Id}
+			});
 		}
 
 		public virtual Task OnDisconnected(WebSocker socket) =>
@@ -48,13 +54,15 @@ namespace TreeRouter.WebSocket
 		public virtual Task<bool> SocketExists(string id) =>
 			Task.FromResult(ConnectionManager.SocketExists(id));
 
-	  public Task SendMessage(string socketId, MessageResponse message, CancellationToken token = default(CancellationToken))
+		public Task SendMessage(string socketId, MessageResponse message,
+			CancellationToken token = default(CancellationToken))
 		{
 			var socket = ConnectionManager.GetSocketById(socketId);
 			return SendMessage(socket, message, token);
 		}
 
-		public Task SendMessage(WebSocker socket, MessageResponse message, CancellationToken token = default(CancellationToken))
+		public Task SendMessage(WebSocker socket, MessageResponse message,
+			CancellationToken token = default(CancellationToken))
 		{
 			// TODO: maybe throw an error?
 			if (socket.State != WebSocketState.Open) return Task.CompletedTask;
@@ -66,10 +74,10 @@ namespace TreeRouter.WebSocket
 		private Task SendJson(WebSocker socket, Message message, CancellationToken token = default(CancellationToken))
 		{
 			var serializedMessage = JsonConvert.SerializeObject(message);
-		  var buffer = new ArraySegment<byte>(array: Encoding.UTF8.GetBytes(serializedMessage),
-		    offset: 0,
-		    count: serializedMessage.Length);
-		  return socket.SendAsync(buffer, WebSocketMessageType.Text, cancellationToken: token, endOfMessage: true);
+			var buffer = new ArraySegment<byte>(array: Encoding.UTF8.GetBytes(serializedMessage),
+				offset: 0,
+				count: serializedMessage.Length);
+			return socket.SendAsync(buffer, WebSocketMessageType.Text, cancellationToken: token, endOfMessage: true);
 		}
 
 		public Task SendMessageToAll(MessageResponse message, CancellationToken token = default(CancellationToken))
@@ -77,77 +85,79 @@ namespace TreeRouter.WebSocket
 			var tasks = new List<Task>();
 			foreach (var pair in ConnectionManager.GetAll())
 			{
-			  if (token.IsCancellationRequested)
-			    break;
+				if (token.IsCancellationRequested)
+					break;
 				if (pair.Value.State == WebSocketState.Open)
 					tasks.Add(SendMessage(pair.Value, message, token));
 			}
+
 			return Task.WhenAll(tasks.ToArray());
 		}
 
-	  public Task Route(Request routerRequest)
-	  {
-	    MessageRequest message = null;
-	    var hm = (HandlerMessage) routerRequest.Context;
+		public Task Route(Request routerRequest)
+		{
+			MessageRequest message = null;
+			var hm = (HandlerMessage) routerRequest.Context;
 
-	    switch (hm.Subprotocol)
-	    {
-	      case "rest.json":
-	        message = DeserializeJson(hm.Serialized);
-	        break;
-	      case "rest.msgpack":
+			switch (hm.Subprotocol)
+			{
+				case "rest.json":
+					message = DeserializeJson(hm.Serialized);
+					break;
+				case "rest.msgpack":
 
-	        break;
-	      default:
-	        return SendMessage(hm.Socket, new MessageResponse
-	        {
-	          MessageType = MessageType.Error,
-	          Status = 400,
-	          Errors = new MessageData
-	          {
-	            ["Message"] = $"Invalid protocol sent: `{hm.Subprotocol}`. Needs to be `rest.json` or `rest.msgpack`"
-	          }
-	        });
-	    }
+					break;
+				default:
+					return SendMessage(hm.Socket, new MessageResponse
+					{
+						MessageType = MessageType.Error,
+						Status = 400,
+						Errors = new MessageData
+						{
+							["Message"] =
+								$"Invalid protocol sent: `{hm.Subprotocol}`. Needs to be `rest.json` or `rest.msgpack`"
+						}
+					});
+			}
 
-	    if (message == null)
-	      return SendMessage(hm.Socket, new MessageResponse
-	      {
-	        MessageType = MessageType.Error,
-	        Errors = new MessageData {["Message"] = "Invalid structure of request"}
-	      });
+			if (message == null)
+				return SendMessage(hm.Socket, new MessageResponse
+				{
+					MessageType = MessageType.Error,
+					Errors = new MessageData {["Message"] = "Invalid structure of request"}
+				});
 
-		  hm.Handler = this;
-		  hm.Request = message;
-		  
-		  try
-		  {
-			  using (var scope = _scopeFactory.CreateScope())
-			  {
-				  return Router.Dispatch(message.Path, message.Method, hm, scope.ServiceProvider);  
-			  }
-			  
-		  }
-		  catch (Exception e)
-		  {
-			  while (e.InnerException != null)
-				  e = e.InnerException;
-			  if (e is RouteNotFound)
-			  {
-				  return SendMessage(hm.Socket, new MessageResponse(message)
-				  {
-					  MessageType = MessageType.Error,
-					  Status = 404,
-					  Errors = new MessageData {["Message"] = "Route not found"}
-				  });
-			  }
-			  ExceptionDispatchInfo.Capture(e).Throw();
-		  }
+			hm.Handler = this;
+			hm.Request = message;
 
-		  return Task.CompletedTask;
-	  }
+			try
+			{
+				using (var scope = _scopeFactory.CreateScope())
+				{
+					return Router.Dispatch(message.Path, message.Method, hm, scope.ServiceProvider);
+				}
+			}
+			catch (Exception e)
+			{
+				while (e.InnerException != null)
+					e = e.InnerException;
+				if (e is RouteNotFound)
+				{
+					return SendMessage(hm.Socket, new MessageResponse(message)
+					{
+						MessageType = MessageType.Error,
+						Status = 404,
+						Errors = new MessageData {["Message"] = "Route not found"}
+					});
+				}
 
-	  private static MessageRequest DeserializeJson(string serialized)
+				ExceptionDispatchInfo.Capture(e).Throw();
+			}
+
+			return Task.CompletedTask;
+		}
+
+		private static MessageRequest DeserializeJson(string serialized)
 		{
 			try
 			{
@@ -158,6 +168,5 @@ namespace TreeRouter.WebSocket
 				return null;
 			}
 		}
-	  
 	}
 }

@@ -1,28 +1,28 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <LangVersion>7.2</LangVersion>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="KazooDotNet.Utils" Version="0.1.3" />
-    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.1.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Http.Extensions" Version="2.1.0" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="2.1.0" />
-    <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
-    <PackageReference Include="System.Text.Json" Version="4.7.0" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\TreeRouter\TreeRouter.csproj" />
-  </ItemGroup>
-  <PropertyGroup>
-    <PackageId>TreeRouter.Http</PackageId>
-    <Title>Tree Router - Http Adapter</Title>
-    <VersionPrefix>0.9.9.5</VersionPrefix>
-    <VersionSuffix />
-    <PackageProjectUrl>https://github.com/AccentuateMe/TreeRouter</PackageProjectUrl>
-    <Description>TreeRouter for .NetCore apps</Description>
-    <PackageTags>router;dotnet core;modular</PackageTags>
-    <Copyright>Copyright 2018-2019 Jeremy Nicoll - MIT</Copyright>
-    <IncludeSource>true</IncludeSource>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <LangVersion>7.2</LangVersion>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="KazooDotNet.Utils" Version="0.1.3" />
+        <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.1.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Http.Extensions" Version="2.1.0" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="2.1.0" />
+        <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
+        <PackageReference Include="System.Text.Json" Version="4.7.0" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\TreeRouter\TreeRouter.csproj" />
+    </ItemGroup>
+    <PropertyGroup>
+        <PackageId>TreeRouter.Http</PackageId>
+        <Title>Tree Router - Http Adapter</Title>
+        <VersionPrefix>0.9.9.5</VersionPrefix>
+        <VersionSuffix />
+        <PackageProjectUrl>https://github.com/AccentuateMe/TreeRouter</PackageProjectUrl>
+        <Description>TreeRouter for .NetCore apps</Description>
+        <PackageTags>router;dotnet core;modular</PackageTags>
+        <Copyright>Copyright 2018-2019 Jeremy Nicoll - MIT</Copyright>
+        <IncludeSource>true</IncludeSource>
+    </PropertyGroup>
 </Project>

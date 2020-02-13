@@ -7,7 +7,6 @@ namespace TreeRouter.WebSocket
 {
 	public abstract class Controller : IController
 	{
-
 		protected RequestDictionary RouteVars;
 		protected HandlerMessage Context;
 		protected MessageRequest Request => Context.Request;

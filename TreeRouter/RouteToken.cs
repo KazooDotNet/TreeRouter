@@ -10,7 +10,7 @@ namespace TreeRouter
 		public bool MatchAny { get; set; }
 		public Regex Matcher { get; set; }
 		public string Text { get; set; }
-		
+
 		public RouteTokenHasher Hasher => new RouteTokenHasher(this);
 	}
 

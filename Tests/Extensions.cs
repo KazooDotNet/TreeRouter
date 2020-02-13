@@ -6,6 +6,5 @@ namespace Tests
 	{
 		public static IntermediateBuilder NullAction(this IntermediateBuilder builder) =>
 			builder.Action(_ => null);
-
 	}
 }
