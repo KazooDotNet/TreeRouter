@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <LangVersion>7.1</LangVersion>
+    <LangVersion>8</LangVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="KazooDotNet.Utils" Version="0.1.0" />
@@ -16,7 +16,7 @@
     <PackageProjectUrl>https://github.com/AccentuateMe/TreeRouter</PackageProjectUrl>
     <Description>A router which maps out path nodes to reduce the number of routes to match, increasing speed.</Description>
     <PackageTags>router;dotnet standard;modular</PackageTags>
-    <Copyright>Copyright 2018-2019 Jeremy Nicoll - MIT</Copyright>
+    <Copyright>Copyright 2018-2020 Jeremy Nicoll - MIT</Copyright>
     <IncludeSource>true</IncludeSource>
   </PropertyGroup>
 </Project>

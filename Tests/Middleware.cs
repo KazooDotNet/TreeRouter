@@ -11,7 +11,7 @@ namespace Tests
 {
 	public class Middleware
 	{
-		private ServiceProvider _provider;
+		private readonly ServiceProvider _provider;
 
 		public Middleware()
 		{
@@ -22,14 +22,14 @@ namespace Tests
 		}
 
 		[Fact]
-		public void KeepsScopeSeparate()
+		public async Task KeepsScopeSeparate()
 		{
 			var router = _provider.GetService<IRouter>();
 			router.Map( r => r.Get<ScopeController>("/test") );
 			var middleware = ActivatorUtilities.CreateInstance<TreeRouter.Http.Middleware>(_provider, router, _emptyNext);
 			var http = new DefaultHttpContext();
 			http.Request.Path = "/test";
-			middleware.Invoke(http, _provider.GetService<IServiceScopeFactory>()).Wait();
+			await middleware.Invoke(http, _provider.GetService<IServiceScopeFactory>());
 			var service = _provider.GetService<SimpleService>();
 			Assert.Null(service.Value);
 			var nonscoped = new NonscopedMiddleware(GenerateNext("somethingelse"));

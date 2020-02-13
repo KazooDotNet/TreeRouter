@@ -1,12 +1,11 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Text.Json;
 using System.Threading.Tasks;
 using KazooDotNet.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 
 namespace TreeRouter.Http
 {
@@ -41,10 +40,9 @@ namespace TreeRouter.Http
 		protected NestedDictionary Query => _nestedParams.Query;
 		protected NestedDictionary Params => _nestedParams.Params;
 
-		protected JsonSerializerSettings JsonSettings { get; set; } = new JsonSerializerSettings
+		protected JsonSerializerOptions JsonSettings { get; set; } = new JsonSerializerOptions
 		{
-			ContractResolver = new CamelCasePropertyNamesContractResolver(),
-			PreserveReferencesHandling = PreserveReferencesHandling.None
+			PropertyNamingPolicy = JsonNamingPolicy.CamelCase
 		};
 		
 		protected string RequestMethod
@@ -197,7 +195,7 @@ namespace TreeRouter.Http
 		{
 			var resp = new HttpResponse
 			{
-				Body = JsonConvert.SerializeObject(obj, JsonSettings)
+				Body = JsonSerializer.Serialize(obj, JsonSettings)
 			};
 			resp.Headers["Content-Type"] = "application/json";
 			return resp;

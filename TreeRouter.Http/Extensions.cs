@@ -54,7 +54,7 @@ namespace TreeRouter.Http
 			if (np == null)
             {
                 var formOptions = context.RequestServices.GetService<IOptions<FormOptions>>();
-				np = new NestedParams(context, formOptions.Value);
+				np = new NestedParams(context, formOptions?.Value ?? new FormOptions());
 				await np.ProcessAll();
 				context.Items["nestedParams"] = np;
 			}    

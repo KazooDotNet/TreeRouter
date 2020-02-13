@@ -7,7 +7,7 @@ namespace Tests
 {
 	public class BasicRouting
 	{
-		private Router _router;
+		private readonly Router _router;
 		
 		public BasicRouting()
 		{

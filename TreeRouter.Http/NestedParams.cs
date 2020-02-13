@@ -3,13 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using KazooDotNet.Utils;
 using Microsoft.AspNetCore.Http;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using TreeRouter.Http.MultipartForm;
 
 namespace TreeRouter.Http
@@ -69,7 +68,7 @@ namespace TreeRouter.Http
             }
         }
 
-        public JsonSerializerSettings JsonSettings { get; set; }
+        public JsonSerializerOptions JsonSettings { get; set; }
         
         private readonly FormOptions _formOptions;
 
@@ -151,39 +150,41 @@ namespace TreeRouter.Http
         
         
         // TODO: make this preserve JSON types
-        private void LoopObject(NestedDictionary dict, JObject obj)
+        private void LoopObject(NestedDictionary dict, JsonElement? jsonObj)
         {
-            if (obj == null)
+            if (jsonObj == null || jsonObj.Value.ValueKind != JsonValueKind.Object)
                 return;
-            foreach (var pair in obj)
-                switch (pair.Value)
+            var obj = jsonObj.Value;
+            
+            foreach (var prop in obj.EnumerateObject())
+                switch (prop.Value.ValueKind)
                 {
-                    case JArray arr:
-                        if (arr.FirstOrDefault() is JObject)
-                        {
-                            var subArray = new NestedDictionary[arr.Count];
-                            for (var i = 0; i < arr.Count; i++)
-                            {
-                                var subDict = new NestedDictionary();
-                                subArray[i] = subDict;
-                                LoopObject(subDict, arr[i] as JObject);
-                            }
-
-                            dict.Set(pair.Key, subArray);
-                        }
-                        else
-                        {
-                            dict.Set(pair.Key, arr.Select(Convert.ToString).ToArray());
-                        }
-
+                    case JsonValueKind.Array:
+	                    var subArray = new NestedDictionary();
+	                    var i = 0;
+	                    foreach (var arrVal in prop.Value.EnumerateArray())
+	                    {
+		                    if (arrVal.ValueKind == JsonValueKind.Object)
+		                    {
+			                    var subDict = new NestedDictionary();
+			                    subArray[i.ToString()] = subDict;
+			                    LoopObject(subDict, arrVal);
+		                    }
+		                    else
+		                    {
+			                    subArray[i.ToString()] = GetJsonValue(arrVal);
+		                    }
+		                    i++;
+	                    }
+	                    dict[prop.Name] = subArray;
                         break;
-                    case JObject newObj:
+                    case JsonValueKind.Object:
                         var newDict = new NestedDictionary();
-                        dict.Set(pair.Key, newDict);
-                        LoopObject(newDict, newObj);
+                        dict.Set(prop.Name, newDict);
+                        LoopObject(newDict, prop.Value);
                         break;
                     default:
-                        dict.Set(pair.Key, pair.Value.ToString());
+                        dict.Set(prop.Name, GetJsonValue(prop.Value));
                         break;
                 }
         }
@@ -206,7 +207,7 @@ namespace TreeRouter.Http
                 using (var reader = new StreamReader(_context.Request.Body, Encoding.UTF8, true, 10240, true))
                 {
                     var @string = await reader.ReadToEndAsync();
-                    LoopObject(Json, JsonConvert.DeserializeObject<JObject>(@string, JsonSettings));    
+                    LoopObject(Json, JsonSerializer.Deserialize<JsonElement>(@string, JsonSettings));    
                 }
                 JsonProcessed = true;
 
@@ -216,6 +217,28 @@ namespace TreeRouter.Http
                 // TODO: add logger?
                 Console.WriteLine(e);
             }
+        }
+
+        private object GetJsonValue(JsonElement? ele)
+        {
+	        if (ele == null)
+		        return null;
+	        var j = ele.Value;
+	        switch (j.ValueKind)
+	        {
+		        case JsonValueKind.Number:
+			        return j;
+		        case JsonValueKind.False:
+			        return false;
+		        case JsonValueKind.True:
+			        return true;
+		        case JsonValueKind.String:
+			        return j.GetString();
+				case JsonValueKind.Undefined:
+				case JsonValueKind.Null:
+			        return null;
+	        }
+	        return null;
         }
         
     }
