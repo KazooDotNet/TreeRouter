@@ -149,9 +149,7 @@ namespace TreeRouter.Http
 
 			return Task.CompletedTask;
 		}
-
-
-		// TODO: make this preserve JSON types
+		
 		private void LoopObject(NestedDictionary dict, JsonElement? jsonObj)
 		{
 			if (jsonObj == null || jsonObj.Value.ValueKind != JsonValueKind.Object)
@@ -162,25 +160,21 @@ namespace TreeRouter.Http
 				switch (prop.Value.ValueKind)
 				{
 					case JsonValueKind.Array:
-						var subArray = new NestedDictionary();
-						var i = 0;
+						var subList = new List<object>();
 						foreach (var arrVal in prop.Value.EnumerateArray())
 						{
 							if (arrVal.ValueKind == JsonValueKind.Object)
 							{
 								var subDict = new NestedDictionary();
-								subArray[i.ToString()] = subDict;
+								subList.Add(subDict);
 								LoopObject(subDict, arrVal);
 							}
 							else
 							{
-								subArray[i.ToString()] = GetJsonValue(arrVal);
+								subList.Add(GetJsonValue(arrVal));
 							}
-
-							i++;
 						}
-
-						dict[prop.Name] = subArray;
+						dict[prop.Name] = subList;
 						break;
 					case JsonValueKind.Object:
 						var newDict = new NestedDictionary();
@@ -204,23 +198,14 @@ namespace TreeRouter.Http
 				JsonProcessed = true;
 				return;
 			}
-
-			try
+			
+			// TODO: use encoding set in headers
+			using (var reader = new StreamReader(_context.Request.Body, Encoding.UTF8, true, 10240, true))
 			{
-				// TODO: use encoding set in headers
-				using (var reader = new StreamReader(_context.Request.Body, Encoding.UTF8, true, 10240, true))
-				{
-					var @string = await reader.ReadToEndAsync();
-					LoopObject(Json, JsonSerializer.Deserialize<JsonElement>(@string, JsonSettings));
-				}
-
-				JsonProcessed = true;
+				var @string = await reader.ReadToEndAsync();
+				LoopObject(Json, JsonSerializer.Deserialize<JsonElement>(@string, JsonSettings));
 			}
-			catch (Exception e)
-			{
-				// TODO: add logger?
-				Console.WriteLine(e);
-			}
+			JsonProcessed = true;
 		}
 
 		private object GetJsonValue(JsonElement? ele)
@@ -231,7 +216,7 @@ namespace TreeRouter.Http
 			switch (j.ValueKind)
 			{
 				case JsonValueKind.Number:
-					return j;
+					return j.ToString(); // Seems like they store it internally as a string anyway
 				case JsonValueKind.False:
 					return false;
 				case JsonValueKind.True:

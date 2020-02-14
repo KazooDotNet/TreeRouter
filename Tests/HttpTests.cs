@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http.Internal;
 using Microsoft.Extensions.Primitives;
 using Tests.Controllers;
@@ -21,6 +22,7 @@ namespace Tests
 				cr.Get("int64").Action("Int64");
 				cr.Get("bool").Action("Boolean");
 				cr.Get("string").Action("String");
+				cr.Post("object").Action("Object");
 			}));
 			_router.Compile();
 		}
@@ -60,7 +62,41 @@ namespace Tests
 			Assert.Equal("true", DispatchAndRead(ctx));
 		}
 
-		private HttpContext ContextWithServices(string path, string method)
+		[Fact]
+		public async Task MapsObjects()
+		{
+			var val = new ConvertObject
+			{
+				Boolean = false,
+				DateTime = DateTime.Now,
+				Int32 = 5,
+				Decimal = 5.5m,
+				String = "5.5",
+				Child = new ChildConvertObject
+				{
+					String = "Lonely child"
+				},
+				Children = new List<ChildConvertObject>
+				{
+					new ChildConvertObject {String = "Child 1"},
+					new ChildConvertObject {String = "Child 2"},
+					new ChildConvertObject {String = "Child 3"}
+				}
+			};
+			using var bodyStream = new MemoryStream();
+			using var writer = new StreamWriter(bodyStream);
+			var serialized = JsonSerializer.Serialize(new { obj = val }, new JsonSerializerOptions
+			{
+				PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+			});
+			writer.Write(serialized);
+			writer.Flush();
+			bodyStream.Seek(0, SeekOrigin.Begin);
+			var ctx = ContextWithServices("/object", "POST", bodyStream, "application/json");
+			Assert.Equal(serialized, DispatchAndRead(ctx));
+		}
+
+		private HttpContext ContextWithServices(string path, string method, Stream body = null, string type = null)
 		{
 			var qIndex = path.LastIndexOf("?", StringComparison.InvariantCulture);
 			var q = "";
@@ -72,6 +108,7 @@ namespace Tests
 
 			return MakeContext(path, method,
 				setup: ctx => { },
+				requestStream: body,
 				requestSetup: req =>
 				{
 					var qDict = new Dictionary<string, StringValues>();
@@ -87,6 +124,8 @@ namespace Tests
 
 					req.Setup(x => x.QueryString).Returns(new QueryString(q));
 					req.Setup(x => x.Query).Returns(new QueryCollection(qDict));
+					if (type != null)
+						req.Setup(x => x.ContentType).Returns(type);
 				});
 		}
 	}

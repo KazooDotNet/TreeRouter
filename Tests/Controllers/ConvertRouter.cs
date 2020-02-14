@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using KazooDotNet.Utils;
 using TreeRouter.Http;
 
 namespace Tests.Controllers
@@ -12,6 +14,7 @@ namespace Tests.Controllers
 		public bool Boolean { get; set; }
 		public DateTime DateTime { get; set; }
 		public ChildConvertObject Child { get; set; }
+		public List<ChildConvertObject> Children { get; set; }
 	}
 
 	public class ChildConvertObject
@@ -25,6 +28,13 @@ namespace Tests.Controllers
 		public HttpResponse Int64(ulong id) => SendJson(id);
 		public HttpResponse String(string id) => SendJson(id);
 		public HttpResponse Boolean(bool id) => SendJson(id);
-		public HttpResponse Object(ConvertObject obj) => SendJson(obj);
+		public HttpResponse Object(NestedDictionary obj)
+		{
+			var finalObj = new ConvertObject();
+			finalObj.Assign(obj);
+			return SendJson(new {obj = finalObj });
+		}
 	}
+	
+	
 }

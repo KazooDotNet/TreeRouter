@@ -4,14 +4,13 @@
         <LangVersion>8</LangVersion>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="KazooDotNet.Utils" Version="0.1.0" />
         <PackageReference Include="MessagePack" Version="1.9.3" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="2.0.0" />
     </ItemGroup>
     <PropertyGroup>
         <PackageId>TreeRouter</PackageId>
         <Title>Tree Router</Title>
-        <VersionPrefix>0.9.5.8</VersionPrefix>
+        <VersionPrefix>0.9.5.9</VersionPrefix>
         <VersionSuffix />
         <PackageProjectUrl>https://github.com/AccentuateMe/TreeRouter</PackageProjectUrl>
         <Description>A router which maps out path nodes to reduce the number of routes to match, increasing speed.</Description>
