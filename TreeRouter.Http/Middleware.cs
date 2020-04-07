@@ -1,5 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -8,7 +7,7 @@ namespace TreeRouter.Http
 	public class Middleware
 	{
 		private readonly RequestDelegate _next;
-		private IRouter _router;
+		private readonly IRouter _router;
 
 		public Middleware(RequestDelegate next, IRouter router)
 		{

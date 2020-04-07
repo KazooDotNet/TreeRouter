@@ -31,6 +31,7 @@ namespace TreeRouter.Http
 		protected ISession Session => Context.Session;
 		protected bool SessionAvailable => Context.Features.Get<ISessionFeature>() != null;
 		protected RequestDictionary RouteVars { get; private set; }
+		protected bool IsJsonController { get; set; }
 
 		private NestedParams _nestedParams;
 
@@ -165,9 +166,19 @@ namespace TreeRouter.Http
 					// Do nothing
 					break;
 				default:
-					await CleanUp();
-					throw new Exception(
-						$"Unknown response type from controller: {response.GetType().FullName} (in {GetType().FullName})");
+					if (IsJsonController)
+					{
+						var str = JsonSerializer.Serialize(finalResponse, JsonSettings);
+						await Response.WriteAsync(str);
+					}
+					else
+					{
+						await CleanUp();
+						throw new Exception(
+							$"Unknown response type from controller: {response.GetType().FullName} (in {GetType().FullName})");	
+					}
+					
+					break;
 			}
 
 			await CleanUp();
